@@ -29,4 +29,9 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    // --- Relación: Un usuario tiene muchos zapatos ---
+    public function zapatos() {
+        return $this->hasMany(Zapato::class);
+    }
 }
