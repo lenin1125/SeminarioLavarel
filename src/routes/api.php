@@ -1,13 +1,19 @@
 <?php
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ZapatoController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ZapatoController; // <-- 1. Importamos tu controlador
 
-// Esta ruta viene por defecto para la autenticación
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+// 1. Ruta pública para iniciar sesión y obtener el Token JWT
+Route::post('login', [AuthController::class, 'login']);
 
-// --- 2. Tu ruta del CRUD de Zapatos ---
-Route::apiResource('zapatos', ZapatoController::class);
+// 2. Rutas PROTEGIDAS por Token JWT
+Route::middleware('auth:api')->group(function () {
+    
+    // Ruta para cerrar sesión invalidando el Token
+    Route::post('logout', [AuthController::class, 'logout']);
+    
+    // CRUD completo de zapatos protegido
+    Route::apiResource('zapatos', ZapatoController::class);
+    
+});
