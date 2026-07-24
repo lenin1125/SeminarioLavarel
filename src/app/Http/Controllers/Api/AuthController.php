@@ -3,53 +3,120 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
     /**
-     * Get a JWT via given credentials.
+     * Registro de Clientes
+     */
+    public function register(Request $request)
+    {
+        // 1. Validar los datos de entrada
+        $validator = Validator::make($request->all(), [
+            'nombre' => 'required|string|max:100',
+            'apellido' => 'required|string|max:100',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:6',
+            'telefono' => 'nullable|string|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // 2. Crear el usuario con Rol de Cliente (ID = 2)
+        $user = User::create([
+            'rol_id' => 2, // Por defecto se registra como Cliente
+            'nombre' => $request->nombre,
+            'apellido' => $request->apellido,
+            'email' => $request->email,
+            'password' => Hash::make($request->password), // Contraseña encriptada de forma segura
+            'telefono' => $request->telefono,
+        ]);
+
+        // 3. Generar token de Sanctum
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Usuario registrado exitosamente.',
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => [
+                'id' => $user->id,
+                'nombre' => $user->nombre,
+                'apellido' => $user->apellido,
+                'email' => $user->email,
+                'rol' => 'Cliente'
+            ]
+        ], 201);
+    }
+
+    /**
+     * Inicio de sesión para todos los usuarios (Admin y Cliente)
      */
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => 'required|email',
+        // 1. Validar campos obligatorios
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|string|email',
             'password' => 'required|string',
         ]);
 
-        // Intentar autenticar con JWT guardando el token generado
-        if (! $token = Auth::guard('api')->attempt($credentials)) {
-            return response()->json(['error' => 'Credenciales inválidas, acceso denegado.'], 401);
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
         }
 
-        return $this->respondWithToken($token);
-    }
+        // 2. Buscar si el usuario existe
+        $user = User::with('rol')->where('email', $request->email)->first();
 
-    /**
-     * Log the user out (Invalidate the token).
-     */
-    public function logout()
-    {
-        Auth::guard('api')->logout();
+        // 3. Verificar contraseña
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Credenciales incorrectas.'
+            ], 401);
+        }
 
-        return response()->json(['message' => 'Sesión cerrada correctamente de la API y Token invalidado.']);
-    }
+        // 4. Generar token
+        $token = $user->createToken('auth_token')->plainTextToken;
 
-    /**
-     * Get the token array structure.
-     */
-    protected function respondWithToken($token)
-    {
         return response()->json([
+            'success' => true,
+            'message' => 'Sesión iniciada con éxito.',
             'access_token' => $token,
-            'token_type' => 'bearer',
-            'expires_in' => Auth::guard('api')->factory()->getTTL() * 60,
+            'token_type' => 'Bearer',
             'user' => [
-                'name' => Auth::guard('api')->user()->name,
-                'email' => Auth::guard('api')->user()->email,
-                'rol' => Auth::guard('api')->user()->rol,
+                'id' => $user->id,
+                'nombre' => $user->nombre,
+                'apellido' => $user->apellido,
+                'email' => $user->email,
+                'rol' => $user->rol->nombre // Devolverá "Administrador" o "Cliente"
             ]
-        ]);
+        ], 200);
+    }
+
+    /**
+     * Cerrar Sesión (Destruir Token)
+     */
+    public function logout(Request $request)
+    {
+        // Revocar el token con el que el usuario hizo la petición actual
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Sesión cerrada exitosamente.'
+        ], 200);
     }
 }

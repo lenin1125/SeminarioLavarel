@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "57729e94a0d6af70d521c23edff8a9c9",
+    "content-hash": "f211b66550e66afef56d30c252f9ccee",
     "packages": [
         {
             "name": "brick/math",
@@ -133,6 +133,130 @@
                 }
             ],
             "time": "2024-02-09T16:56:22+00:00"
+        },
+        {
+            "name": "cloudinary/cloudinary_php",
+            "version": "3.1.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cloudinary/cloudinary_php.git",
+                "reference": "4b989f4d69f933afbe9cf0776234a9f46fb71587"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cloudinary/cloudinary_php/zipball/4b989f4d69f933afbe9cf0776234a9f46fb71587",
+                "reference": "4b989f4d69f933afbe9cf0776234a9f46fb71587",
+                "shasum": ""
+            },
+            "require": {
+                "cloudinary/transformation-builder-sdk": "^2",
+                "ext-json": "*",
+                "guzzlehttp/guzzle": "^7.4.5",
+                "guzzlehttp/promises": "^1.5.3|^2.0",
+                "guzzlehttp/psr7": "^2.7",
+                "monolog/monolog": "^2|^3",
+                "php": ">=8.0.0",
+                "psr/log": "^2|^3"
+            },
+            "require-dev": {
+                "ext-dom": "*",
+                "ext-libxml": "*",
+                "ext-zip": "*",
+                "friendsofphp/php-cs-fixer": "*",
+                "phpmd/phpmd": "*",
+                "squizlabs/php_codesniffer": "*",
+                "symfony/phpunit-bridge": "^7.2"
+            },
+            "type": "library",
+            "autoload": {
+                "classmap": [
+                    "src"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Cloudinary",
+                    "homepage": "https://github.com/cloudinary/cloudinary_php/graphs/contributors"
+                }
+            ],
+            "description": "Cloudinary PHP SDK",
+            "homepage": "https://github.com/cloudinary/cloudinary_php",
+            "keywords": [
+                "cdn",
+                "cloud",
+                "cloudinary",
+                "image management",
+                "sdk"
+            ],
+            "support": {
+                "email": "info@cloudinary.com",
+                "issues": "https://github.com/cloudinary/cloudinary_php/issues",
+                "source": "https://github.com/cloudinary/cloudinary_php/tree/3.1.3"
+            },
+            "time": "2026-04-26T16:04:32+00:00"
+        },
+        {
+            "name": "cloudinary/transformation-builder-sdk",
+            "version": "2.1.5",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cloudinary/php-transformation-builder-sdk.git",
+                "reference": "e8de59409e8e3c6abc553d1713f82d1dc71ce212"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cloudinary/php-transformation-builder-sdk/zipball/e8de59409e8e3c6abc553d1713f82d1dc71ce212",
+                "reference": "e8de59409e8e3c6abc553d1713f82d1dc71ce212",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "php": ">=8.0.0"
+            },
+            "require-dev": {
+                "ext-dom": "*",
+                "ext-libxml": "*",
+                "ext-zip": "*",
+                "friendsofphp/php-cs-fixer": "*",
+                "phpmd/phpmd": "*",
+                "squizlabs/php_codesniffer": "*",
+                "symfony/phpunit-bridge": "^7.2"
+            },
+            "type": "library",
+            "autoload": {
+                "classmap": [
+                    "src"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Cloudinary",
+                    "homepage": "https://github.com/cloudinary/php-transformation-builder-sdk/graphs/contributors"
+                }
+            ],
+            "description": "Cloudinary PHP Transformation Builder SDK",
+            "homepage": "https://github.com/cloudinary/php-transformation-builder-sdk",
+            "keywords": [
+                "cdn",
+                "cloud",
+                "cloudinary",
+                "image management",
+                "sdk"
+            ],
+            "support": {
+                "email": "info@cloudinary.com",
+                "issues": "https://github.com/cloudinary/php-transformation-builder-sdk/issues",
+                "source": "https://github.com/cloudinary/php-transformation-builder-sdk/tree/2.1.5"
+            },
+            "time": "2026-04-29T12:17:58+00:00"
         },
         {
             "name": "dflydev/dot-access-data",
@@ -6457,6 +6581,67 @@
                 "source": "https://github.com/laravel/agent-detector"
             },
             "time": "2026-04-29T18:32:34+00:00"
+        },
+        {
+            "name": "laravel/breeze",
+            "version": "v2.4.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/laravel/breeze.git",
+                "reference": "4f20e7b2cc8d25daa85d8647241a89c8e0930305"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/laravel/breeze/zipball/4f20e7b2cc8d25daa85d8647241a89c8e0930305",
+                "reference": "4f20e7b2cc8d25daa85d8647241a89c8e0930305",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/console": "^11.0|^12.0|^13.0",
+                "illuminate/filesystem": "^11.0|^12.0|^13.0",
+                "illuminate/support": "^11.0|^12.0|^13.0",
+                "illuminate/validation": "^11.0|^12.0|^13.0",
+                "php": "^8.2.0",
+                "symfony/console": "^7.0|^8.0"
+            },
+            "require-dev": {
+                "laravel/framework": "^11.0|^12.0|^13.0",
+                "orchestra/testbench-core": "^9.0|^10.0|^11.0",
+                "phpstan/phpstan": "^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Laravel\\Breeze\\BreezeServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Laravel\\Breeze\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Taylor Otwell",
+                    "email": "taylor@laravel.com"
+                }
+            ],
+            "description": "Minimal Laravel authentication scaffolding with Blade and Tailwind.",
+            "keywords": [
+                "auth",
+                "laravel"
+            ],
+            "support": {
+                "issues": "https://github.com/laravel/breeze/issues",
+                "source": "https://github.com/laravel/breeze"
+            },
+            "time": "2026-05-14T16:54:25+00:00"
         },
         {
             "name": "laravel/pail",
