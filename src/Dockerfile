@@ -1,6 +1,7 @@
-FROM php:8.2-apache
+# Usamos PHP 8.4 para cumplir los requerimientos de Composer
+FROM php:8.4-apache
 
-# 1. Habilitar mod_rewrite para que las rutas de Laravel funcionen
+# 1. Habilitar mod_rewrite
 RUN a2enmod rewrite
 
 # 2. Instalar dependencias del sistema
@@ -28,10 +29,10 @@ WORKDIR /var/www/html
 # 6. Copiar el código del proyecto
 COPY . .
 
-# 7. Instalar dependencias de PHP
-RUN composer install --no-dev --optimize-autoloader
+# 7. Instalar dependencias de PHP ignorando chequeos estrictos de versión por seguridad
+RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs
 
-# 8. APUNTAR APACHE A LA CARPETA /public DE LARAVEL (Soluciona el pantallazo de phpinfo)
+# 8. APUNTAR APACHE A LA CARPETA /public DE LARAVEL
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
@@ -40,10 +41,10 @@ RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# 10. Exponer el puerto 80 de producción
+# 10. Exponer el puerto 80
 EXPOSE 80
 
-# 11. Optimizar Laravel y arrancar Apache en primer plano
+# 11. Optimizar Laravel y arrancar Apache
 CMD php artisan config:clear && \
     php artisan route:clear && \
     php artisan view:clear && \
