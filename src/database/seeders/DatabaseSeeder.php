@@ -50,5 +50,39 @@ class DatabaseSeeder extends Seeder
                 'telefono' => '3159876543',
             ]);
         }
+
+        // 5. Insertar Sneakers de Prueba para el Catálogo (no duplica si ya existen)
+        DB::table('sneakers')->insertOrIgnore([
+            [
+                'id' => 1,
+                'nombre' => 'Nike Air Force 1',
+                'descripcion' => 'Diseño clásico urbano en color blanco.',
+                'precio' => 120.00,
+                'stock' => 10,
+                'categoria_id' => 2, // Urbano
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => 2,
+                'nombre' => 'Adidas Ultraboost',
+                'descripcion' => 'Calzado deportivo con amotiguación premium.',
+                'precio' => 150.00,
+                'stock' => 8,
+                'categoria_id' => 1, // Deportivo
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => 3,
+                'nombre' => 'Puma Suede Classic',
+                'descripcion' => 'Estilo casual icónico para el día a día.',
+                'precio' => 90.00,
+                'stock' => 15,
+                'categoria_id' => 3, // Casual
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
     }
 }
