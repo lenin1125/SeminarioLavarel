@@ -14,38 +14,41 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Insertar Roles Base (Administrador = ID 1, Cliente = ID 2)
-        DB::table('roles')->insert([
+        // 1. Insertar Roles Base (no duplica si ya existen)
+        DB::table('roles')->insertOrIgnore([
             ['id' => 1, 'nombre' => 'Administrador', 'created_at' => now(), 'updated_at' => now()],
             ['id' => 2, 'nombre' => 'Cliente', 'created_at' => now(), 'updated_at' => now()],
         ]);
 
-        // 2. Insertar Categorías Base para los Sneakers
-        DB::table('categorias')->insert([
-            ['nombre' => 'Deportivo', 'created_at' => now(), 'updated_at' => now()],
-            ['nombre' => 'Urbano', 'created_at' => now(), 'updated_at' => now()],
-            ['nombre' => 'Casual', 'created_at' => now(), 'updated_at' => now()],
+        // 2. Insertar Categorías Base (no duplica si ya existen)
+        DB::table('categorias')->insertOrIgnore([
+            ['id' => 1, 'nombre' => 'Deportivo', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 2, 'nombre' => 'Urbano', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 3, 'nombre' => 'Casual', 'created_at' => now(), 'updated_at' => now()],
         ]);
 
-        // 3. Crear un Usuario Administrador de pruebas
-        // Usamos el modelo User de Laravel apuntando al rol_id 1 (Administrador)
-        User::create([
-            'rol_id' => 1, // Administrador
-            'nombre' => 'Admin',
-            'apellido' => 'SneakersLH',
-            'email' => 'admin@sneakerslh.com',
-            'password' => Hash::make('admin12345'), // Contraseña encriptada de forma segura
-            'telefono' => '3001234567',
-        ]);
+        // 3. Crear Administrador si no existe
+        if (!User::where('email', 'admin@sneakerslh.com')->exists()) {
+            User::create([
+                'rol_id' => 1,
+                'nombre' => 'Admin',
+                'apellido' => 'SneakersLH',
+                'email' => 'admin@sneakerslh.com',
+                'password' => Hash::make('admin12345'),
+                'telefono' => '3001234567',
+            ]);
+        }
 
-        // 4. Crear un Usuario Cliente de pruebas
-        User::create([
-            'rol_id' => 2, // Cliente
-            'nombre' => 'Juan',
-            'apellido' => 'Perez',
-            'email' => 'juan@gmail.com',
-            'password' => Hash::make('cliente12345'),
-            'telefono' => '3159876543',
-        ]);
+        // 4. Crear Cliente si no existe
+        if (!User::where('email', 'juan@gmail.com')->exists()) {
+            User::create([
+                'rol_id' => 2,
+                'nombre' => 'Juan',
+                'apellido' => 'Perez',
+                'email' => 'juan@gmail.com',
+                'password' => Hash::make('cliente12345'),
+                'telefono' => '3159876543',
+            ]);
+        }
     }
 }

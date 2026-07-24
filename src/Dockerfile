@@ -1,7 +1,7 @@
 # Usamos PHP 8.4 para cumplir los requerimientos de Composer
 FROM php:8.4-apache
 
-# 1. Habilitar mod_rewrite de Apache
+# 1. Habilitar mod_rewrite
 RUN a2enmod rewrite
 
 # 2. Instalar dependencias del sistema
@@ -44,13 +44,10 @@ RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 # 10. Exponer el puerto 80
 EXPOSE 80
 
-# 11. Optimizar Laravel y arrancar Apache
+# 11. Ejecutar migraciones, seeders y arrancar Apache
 CMD php artisan config:clear && \
     php artisan route:clear && \
     php artisan view:clear && \
-    php artisan storage:link --force || true && \
-    php artisan migrate:fresh --force && \
-    php artisan config:cache && \
-    php artisan route:cache && \
-    php artisan view:cache && \
+    php artisan migrate --force && \
+    php artisan db:seed --force && \
     apache2-foreground
