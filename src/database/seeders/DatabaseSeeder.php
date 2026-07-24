@@ -51,8 +51,8 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // 5. Insertar Sneakers de Prueba para el Catálogo (no duplica si ya existen)
-        DB::table('sneakers')->insertOrIgnore([
+        // 5. Insertar Productos de Prueba para el Catálogo (no duplica si ya existen)
+        DB::table('productos')->insertOrIgnore([
             [
                 'id' => 1,
                 'nombre' => 'Nike Air Force 1',
