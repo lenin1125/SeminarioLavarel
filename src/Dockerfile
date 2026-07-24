@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libjpeg62-turbo-dev
 
-# 3. Instalar extensiones de PHP necesarias (incluyendo pdo_mysql)
+# 3. Instalar extensiones de PHP necesarias
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
@@ -44,11 +44,11 @@ RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 # 10. Exponer el puerto 80
 EXPOSE 80
 
-# 11. Ejecutar migraciones limpias, crear enlace simbólico, optimizar cache y arrancar Apache
+# 11. Optimizar Laravel y arrancar Apache
 CMD php artisan config:clear && \
     php artisan route:clear && \
     php artisan view:clear && \
-    php artisan storage:link && \
+    php artisan storage:link --force || true && \
     php artisan migrate:fresh --force && \
     php artisan config:cache && \
     php artisan route:cache && \
