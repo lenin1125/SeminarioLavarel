@@ -665,21 +665,32 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
         return back()->with('success', 'El usuario ha sido eliminado del sistema.');
     })->name('admin.usuarios.destroy');
 
-    // Ruta temporal para forzar estructura, verificar usuarios y poblar el catálogo
+   // Ruta temporal para forzar estructura, verificar usuarios y poblar el catálogo
 Route::get('/setup-inicial', function () {
     try {
-        // 0. FORZAR LA CREACIÓN DE LA TABLA PIVOTE 'producto_talla' DIRECTAMENTE EN LA BD
+        // 0. FORZAR LA CREACIÓN DE LA TABLA PIVOTE 'producto_talla' CON TODAS SUS COLUMNAS
         DB::statement("
             CREATE TABLE IF NOT EXISTS `producto_talla` (
                 `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
                 `producto_id` bigint(20) UNSIGNED NOT NULL,
                 `talla_id` bigint(20) UNSIGNED NOT NULL,
                 `stock` int(11) DEFAULT 0,
+                `cantidad` int(11) DEFAULT 0,
                 `created_at` timestamp NULL DEFAULT NULL,
                 `updated_at` timestamp NULL DEFAULT NULL,
                 PRIMARY KEY (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         ");
+
+        // Si la tabla ya existía de antes sin la columna 'cantidad', se la agregamos de inmediato
+        if (\Illuminate\Support\Facades\Schema::hasTable('producto_talla')) {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('producto_talla', 'cantidad')) {
+                DB::statement("ALTER TABLE `producto_talla` ADD COLUMN `cantidad` INT DEFAULT 0 AFTER `stock`;");
+            }
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('producto_talla', 'stock')) {
+                DB::statement("ALTER TABLE `producto_talla` ADD COLUMN `stock` INT DEFAULT 0 AFTER `talla_id`;");
+            }
+        }
 
         // 1. Correr cualquier otra migración pendiente
         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
@@ -712,10 +723,10 @@ Route::get('/setup-inicial', function () {
             DB::statement("DELETE t1 FROM tallas t1 INNER JOIN tallas t2 WHERE t1.id > t2.id AND t1.{$columnaTalla} = t2.{$columnaTalla};");
         }
 
-        return "<h1>✅ ¡FORZADO DE TABLA Y SETUP COMPLETADO!</h1>" .
-               "<p>1. La tabla <b>producto_talla</b> fue creada/verificada exitosamente en la BD.</p>" .
+        return "<h1>✅ ¡ESTRUCTURA DE TABLAS Y SETUP COMPLETADOS!</h1>" .
+               "<p>1. Tabla <b>producto_talla</b> actualizada con las columnas <b>stock</b> y <b>cantidad</b>.</p>" .
                "<p>2. Datos base (roles, admin) actualizados.</p>" .
-               "<br><a href='/admin/zapatos/crear'>👉 Haz clic aquí para intentar crear el zapato de nuevo</a>";
+               "<br><a href='/'>👉 Haz clic aquí para ir a la Tienda</a>";
 
     } catch (\Exception $e) {
         return "❌ Error durante el setup: " . $e->getMessage();
