@@ -665,19 +665,32 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
         return back()->with('success', 'El usuario ha sido eliminado del sistema.');
     })->name('admin.usuarios.destroy');
 
-    // Ruta temporal para ejecutar migraciones, verificar usuarios y poblar el catálogo
+    // Ruta temporal para forzar estructura, verificar usuarios y poblar el catálogo
 Route::get('/setup-inicial', function () {
     try {
-        // 0. Correr migraciones pendientes (Crea la tabla 'producto_talla' y cualquier otra que falte)
+        // 0. FORZAR LA CREACIÓN DE LA TABLA PIVOTE 'producto_talla' DIRECTAMENTE EN LA BD
+        DB::statement("
+            CREATE TABLE IF NOT EXISTS `producto_talla` (
+                `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+                `producto_id` bigint(20) UNSIGNED NOT NULL,
+                `talla_id` bigint(20) UNSIGNED NOT NULL,
+                `stock` int(11) DEFAULT 0,
+                `created_at` timestamp NULL DEFAULT NULL,
+                `updated_at` timestamp NULL DEFAULT NULL,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+
+        // 1. Correr cualquier otra migración pendiente
         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
 
-        // 1. Asegurar que los roles existan
+        // 2. Asegurar que los roles existan
         DB::table('roles')->insertOrIgnore([
             ['id' => 1, 'nombre' => 'Administrador', 'created_at' => now(), 'updated_at' => now()],
             ['id' => 2, 'nombre' => 'Cliente', 'created_at' => now(), 'updated_at' => now()],
         ]);
 
-        // 2. Crear o actualizar la contraseña del Admin
+        // 3. Crear o actualizar la contraseña del Admin
         \App\Models\User::updateOrCreate(
             ['email' => 'admin@sneakerslh.com'],
             [
@@ -689,29 +702,7 @@ Route::get('/setup-inicial', function () {
             ]
         );
 
-        // 3. Crear productos de prueba
-        if (\Illuminate\Support\Facades\Schema::hasTable('productos')) {
-            DB::table('productos')->insertOrIgnore([
-                [
-                    'id'          => 1,
-                    'nombre'      => 'Nike Air Force 1',
-                    'descripcion' => 'Diseño clásico urbano.',
-                    'precio'      => 120.00,
-                    'created_at'  => now(),
-                    'updated_at'  => now(),
-                ],
-                [
-                    'id'          => 2,
-                    'nombre'      => 'Adidas Ultraboost',
-                    'descripcion' => 'Zapatillas deportivas cómodas.',
-                    'precio'      => 150.00,
-                    'created_at'  => now(),
-                    'updated_at'  => now(),
-                ]
-            ]);
-        }
-
-        // 4. Limpiar tallas duplicadas automáticamente si la tabla existe
+        // 4. Limpiar tallas duplicadas si la tabla existe
         if (\Illuminate\Support\Facades\Schema::hasTable('tallas')) {
             $columnas = DB::getSchemaBuilder()->getColumnListing('tallas');
             $columnaTalla = 'talla';
@@ -721,12 +712,10 @@ Route::get('/setup-inicial', function () {
             DB::statement("DELETE t1 FROM tallas t1 INNER JOIN tallas t2 WHERE t1.id > t2.id AND t1.{$columnaTalla} = t2.{$columnaTalla};");
         }
 
-        return "<h1>✅ ¡Setup completado con éxito!</h1>" .
-               "<p>- Migraciones ejecutadas (Tablas creadas).</p>" .
-               "<p>- Admin actualizado (admin@sneakerslh.com / admin12345).</p>" .
-               "<p>- Productos base insertados.</p>" .
-               "<p>- Tallas duplicadas limpiadas.</p>" .
-               "<br><a href='/admin/zapatos'>Volver al panel de administración</a>";
+        return "<h1>✅ ¡FORZADO DE TABLA Y SETUP COMPLETADO!</h1>" .
+               "<p>1. La tabla <b>producto_talla</b> fue creada/verificada exitosamente en la BD.</p>" .
+               "<p>2. Datos base (roles, admin) actualizados.</p>" .
+               "<br><a href='/admin/zapatos/crear'>👉 Haz clic aquí para intentar crear el zapato de nuevo</a>";
 
     } catch (\Exception $e) {
         return "❌ Error durante el setup: " . $e->getMessage();
