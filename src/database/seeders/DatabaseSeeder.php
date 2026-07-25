@@ -27,15 +27,19 @@ class DatabaseSeeder extends Seeder
             ['id' => 3, 'nombre' => 'Casual', 'created_at' => now(), 'updated_at' => now()],
         ]);
 
-        // 3. Insertar Tallas Base (36 a 44)
-        $tallas = [36, 37, 38, 39, 40, 41, 42, 43, 44];
-        foreach ($tallas as $talla) {
-            DB::table('tallas')->insertOrIgnore([
-                'numero' => $talla,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
+        // 3. Insertar Tallas Base (36 a 44) de forma limpia
+$tallas = [36, 37, 38, 39, 40, 41, 42, 43, 44];
+
+// Limpiamos la tabla primero o borramos duplicados si los hay
+DB::table('tallas')->truncate(); 
+
+foreach ($tallas as $talla) {
+    DB::table('tallas')->insert([
+        'numero' => $talla, // O 'talla' según el nombre de tu columna
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+}
 
         // 4. Crear Administrador si no existe
         if (!User::where('email', 'admin@sneakerslh.com')->exists()) {
