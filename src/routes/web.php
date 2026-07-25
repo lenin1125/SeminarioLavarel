@@ -668,7 +668,7 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
    // Ruta temporal para forzar estructura, verificar usuarios y poblar el catálogo
 Route::get('/setup-inicial', function () {
     try {
-        // 0. FORZAR LA CREACIÓN DE LA TABLA PIVOTE 'producto_talla' CON TODAS SUS COLUMNAS
+        // 0. FORZAR CREACIÓN DE 'producto_talla'
         DB::statement("
             CREATE TABLE IF NOT EXISTS `producto_talla` (
                 `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -682,7 +682,20 @@ Route::get('/setup-inicial', function () {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         ");
 
-        // Si la tabla ya existía de antes sin la columna 'cantidad', se la agregamos de inmediato
+        // 1. FORZAR CREACIÓN DE 'producto_imagen' (La que te acaba de dar error)
+        DB::statement("
+            CREATE TABLE IF NOT EXISTS `producto_imagen` (
+                `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+                `producto_id` bigint(20) UNSIGNED NOT NULL,
+                `ruta` varchar(255) DEFAULT NULL,
+                `imagen` varchar(255) DEFAULT NULL,
+                `created_at` timestamp NULL DEFAULT NULL,
+                `updated_at` timestamp NULL DEFAULT NULL,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+
+        // Verificar columnas en producto_talla por si acaso
         if (\Illuminate\Support\Facades\Schema::hasTable('producto_talla')) {
             if (!\Illuminate\Support\Facades\Schema::hasColumn('producto_talla', 'cantidad')) {
                 DB::statement("ALTER TABLE `producto_talla` ADD COLUMN `cantidad` INT DEFAULT 0 AFTER `stock`;");
@@ -692,16 +705,16 @@ Route::get('/setup-inicial', function () {
             }
         }
 
-        // 1. Correr cualquier otra migración pendiente
+        // 2. Correr cualquier otra migración pendiente
         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
 
-        // 2. Asegurar que los roles existan
+        // 3. Asegurar que los roles existan
         DB::table('roles')->insertOrIgnore([
             ['id' => 1, 'nombre' => 'Administrador', 'created_at' => now(), 'updated_at' => now()],
             ['id' => 2, 'nombre' => 'Cliente', 'created_at' => now(), 'updated_at' => now()],
         ]);
 
-        // 3. Crear o actualizar la contraseña del Admin
+        // 4. Crear o actualizar la contraseña del Admin
         \App\Models\User::updateOrCreate(
             ['email' => 'admin@sneakerslh.com'],
             [
@@ -713,7 +726,7 @@ Route::get('/setup-inicial', function () {
             ]
         );
 
-        // 4. Limpiar tallas duplicadas si la tabla existe
+        // 5. Limpiar tallas duplicadas si la tabla existe
         if (\Illuminate\Support\Facades\Schema::hasTable('tallas')) {
             $columnas = DB::getSchemaBuilder()->getColumnListing('tallas');
             $columnaTalla = 'talla';
@@ -723,10 +736,9 @@ Route::get('/setup-inicial', function () {
             DB::statement("DELETE t1 FROM tallas t1 INNER JOIN tallas t2 WHERE t1.id > t2.id AND t1.{$columnaTalla} = t2.{$columnaTalla};");
         }
 
-        return "<h1>✅ ¡ESTRUCTURA DE TABLAS Y SETUP COMPLETADOS!</h1>" .
-               "<p>1. Tabla <b>producto_talla</b> actualizada con las columnas <b>stock</b> y <b>cantidad</b>.</p>" .
-               "<p>2. Datos base (roles, admin) actualizados.</p>" .
-               "<br><a href='/'>👉 Haz clic aquí para ir a la Tienda</a>";
+        return "<h1>✅ ¡TABLA 'producto_imagen' Y SETUP COMPLETADOS!</h1>" .
+               "<p>1. Las tablas <b>producto_talla</b> y <b>producto_imagen</b> están creadas y listas.</p>" .
+               "<br><a href='/zapatos/7'>👉 Haz clic aquí para reintentar ver el zapato</a>";
 
     } catch (\Exception $e) {
         return "❌ Error durante el setup: " . $e->getMessage();
