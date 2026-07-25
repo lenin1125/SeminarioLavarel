@@ -664,4 +664,50 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
         return back()->with('success', 'El pedido y su comprobante fueron rechazados y eliminados con éxito.');
     })->name('admin.pedidos.rechazar');
 
+    // Ruta temporal para verificar usuarios y poblar el catálogo
+Route::get('/setup-inicial', function () {
+    // 1. Asegurar que los roles existan
+    \DB::table('roles')->insertOrIgnore([
+        ['id' => 1, 'nombre' => 'Administrador', 'created_at' => now(), 'updated_at' => now()],
+        ['id' => 2, 'nombre' => 'Cliente', 'created_at' => now(), 'updated_at' => now()],
+    ]);
+
+    // 2. Crear o actualizar la contraseña del Admin a: admin12345
+    \App\Models\User::updateOrCreate(
+        ['email' => 'admin@sneakerslh.com'],
+        [
+            'rol_id' => 1,
+            'nombre' => 'Admin',
+            'apellido' => 'SneakersLH',
+            'password' => \Illuminate\Support\Facades\Hash::make('admin12345'),
+            'telefono' => '3001234567',
+        ]
+    );
+
+    // 3. Crear productos de prueba
+    // Ajusta 'productos' si tu modelo/tabla tiene otro nombre
+    if (\Schema::hasTable('productos')) {
+        \DB::table('productos')->insertOrIgnore([
+            [
+                'id' => 1,
+                'nombre' => 'Nike Air Force 1',
+                'descripcion' => 'Diseño clásico urbano.',
+                'precio' => 120.00,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => 2,
+                'nombre' => 'Adidas Ultraboost',
+                'descripcion' => 'Zapatillas deportivas cómodas.',
+                'precio' => 150.00,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        ]);
+    }
+
+    return "✅ ¡Setup completado! Admin creado (admin@sneakerslh.com / admin12345) y productos insertados en el catálogo.";
+});
+
 });
