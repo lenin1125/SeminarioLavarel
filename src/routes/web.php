@@ -112,11 +112,11 @@ Route::get('/registro', function () {
 Route::post('/registro', function (Request $request) {
     $partesNombre = explode(' ', trim($request->name), 2);
     $user = User::create([
-        'nombre' => $partesNombre[0],
+        'nombre'   => $partesNombre[0],
         'apellido' => $partesNombre[1] ?? '.',
-        'email' => $request->email,
+        'email'    => $request->email,
         'password' => Hash::make($request->password),
-        'rol_id' => 2, 
+        'rol_id'   => 2, 
     ]);
     Auth::login($user); 
     return redirect()->route('tienda.index');
@@ -318,56 +318,56 @@ Route::middleware(['auth'])->group(function () {
         return view('checkout_pago', compact('pedidoId'));
     })->name('checkout.pago_pantalla');
 
-   Route::post('/checkout/guardar-pago', function(Request $request) {
-    // 1. Validamos extensión y tamaño máximo (5MB)
-    $request->validate([
-        'comprobante' => 'required|mimes:jpeg,png,jpg,pdf|max:5120'
-    ]);
-    
-    $cloudName = 'x5lp98vz';
-    $uploadPreset = 'sneakerslh_preset';
-    $file = $request->file('comprobante');
-
-    // 2. Si es PDF usamos 'raw', si es imagen usamos 'image'
-    $extension = strtolower($file->getClientOriginalExtension());
-    $resourceType = ($extension === 'pdf') ? 'raw' : 'image';
-
-    $response = Http::attach('file', file_get_contents($file->getRealPath()), $file->getClientOriginalName())
-        ->post("https://api.cloudinary.com/v1_1/{$cloudName}/{$resourceType}/upload", [
-            'upload_preset' => $uploadPreset,
+    Route::post('/checkout/guardar-pago', function(Request $request) {
+        // 1. Validamos extensión y tamaño máximo (5MB)
+        $request->validate([
+            'comprobante' => 'required|mimes:jpeg,png,jpg,pdf|max:5120'
         ]);
+        
+        $cloudName = 'x5lp98vz';
+        $uploadPreset = 'sneakerslh_preset';
+        $file = $request->file('comprobante');
 
-    if ($response->failed()) {
-        return redirect()->back()->with('error', 'Error al subir el comprobante. Verifica que el archivo no esté corrupto.');
-    }
+        // 2. Si es PDF usamos 'raw', si es imagen usamos 'image'
+        $extension = strtolower($file->getClientOriginalExtension());
+        $resourceType = ($extension === 'pdf') ? 'raw' : 'image';
 
-    $data = $response->json();
+        $response = Http::attach('file', file_get_contents($file->getRealPath()), $file->getClientOriginalName())
+            ->post("https://api.cloudinary.com/v1_1/{$cloudName}/{$resourceType}/upload", [
+                'upload_preset' => $uploadPreset,
+            ]);
 
-    $columnas = DB::getSchemaBuilder()->getColumnListing('pagos');
-    
-    $columnaImagen = 'comprobante'; 
-    if (in_array('comprobante_pago', $columnas)) $columnaImagen = 'comprobante_pago';
-    elseif (in_array('imagen', $columnas)) $columnaImagen = 'imagen';
-    elseif (in_array('url', $columnas)) $columnaImagen = 'url';
-    elseif (in_array('comprobante_url', $columnas)) $columnaImagen = 'comprobante_url';
+        if ($response->failed()) {
+            return redirect()->back()->with('error', 'Error al subir el comprobante. Verifica que el archivo no esté corrupto.');
+        }
 
-    $insertData = [
-        'pedido_id'   => $request->pedido_id,
-        'metodo_pago' => 'Transferencia / Nequi / Daviplata',
-        $columnaImagen => $data['secure_url'],
-        'created_at'  => now(),
-        'updated_at'  => now()
-    ];
+        $data = $response->json();
 
-    if (in_array('fecha_pago', $columnas)) {
-        $insertData['fecha_pago'] = now();
-    }
+        $columnas = DB::getSchemaBuilder()->getColumnListing('pagos');
+        
+        $columnaImagen = 'comprobante'; 
+        if (in_array('comprobante_pago', $columnas)) $columnaImagen = 'comprobante_pago';
+        elseif (in_array('imagen', $columnas)) $columnaImagen = 'imagen';
+        elseif (in_array('url', $columnas)) $columnaImagen = 'url';
+        elseif (in_array('comprobante_url', $columnas)) $columnaImagen = 'comprobante_url';
 
-    DB::table('pagos')->insert($insertData);
+        $insertData = [
+            'pedido_id'    => $request->pedido_id,
+            'metodo_pago'  => 'Transferencia / Nequi / Daviplata',
+            $columnaImagen => $data['secure_url'],
+            'created_at'   => now(),
+            'updated_at'   => now()
+        ];
 
-    session()->forget('carrito');
-    return redirect()->route('tienda.index')->with('success', '¡Comprobante enviado exitosamente!');
-})->name('checkout.guardar_pago');
+        if (in_array('fecha_pago', $columnas)) {
+            $insertData['fecha_pago'] = now();
+        }
+
+        DB::table('pagos')->insert($insertData);
+
+        session()->forget('carrito');
+        return redirect()->route('tienda.index')->with('success', '¡Comprobante enviado exitosamente!');
+    })->name('checkout.guardar_pago');
 
 });
 
@@ -407,11 +407,11 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
         $dataPrincipal = $responsePrincipal->json();
         
         $producto = Producto::create([
-            'nombre' => $request->nombre,
-            'descripcion' => $request->descripcion,
-            'precio' => $request->precio,
-            'genero' => $request->genero,
-            'imagen_url' => $dataPrincipal['secure_url'], 
+            'nombre'       => $request->nombre,
+            'descripcion'  => $request->descripcion,
+            'precio'       => $request->precio,
+            'genero'       => $request->genero,
+            'imagen_url'   => $dataPrincipal['secure_url'], 
             'categoria_id' => $request->categoria_id,
         ]);
         
@@ -451,10 +451,10 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
         $producto = Producto::findOrFail($id);
         
         $data = [
-            'nombre' => $request->nombre,
-            'descripcion' => $request->descripcion,
-            'precio' => $request->precio,
-            'genero' => $request->genero,
+            'nombre'       => $request->nombre,
+            'descripcion'  => $request->descripcion,
+            'precio'       => $request->precio,
+            'genero'       => $request->genero,
             'categoria_id' => $request->categoria_id,
         ];
 
@@ -511,9 +511,9 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::post('/proveedores', function(Request $request) {
         if (Auth::user()->email !== 'admin@sneakerslh.com') abort(403);
         DB::table('proveedores')->insert([
-            'nombre' => $request->nombre,
-            'telefono' => $request->telefono,
-            'ciudad' => $request->ciudad,
+            'nombre'     => $request->nombre,
+            'telefono'   => $request->telefono,
+            'ciudad'     => $request->ciudad,
             'created_at' => now(),
             'updated_at' => now()
         ]);
@@ -573,6 +573,17 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 
         return redirect()->back()->with('success', '¡Pago verificado y venta asentada con éxito!');
     })->name('admin.pedidos.aprobar');
+
+    // Rechazar Pedido
+    Route::delete('/pedidos/{id}/rechazar', function ($id) {
+        if (Auth::user()->email !== 'admin@sneakerslh.com') abort(403);
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        DB::table('pedidos')->where('id', $id)->delete();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+        return back()->with('success', 'El pedido y su comprobante fueron rechazados y eliminados con éxito.');
+    })->name('admin.pedidos.rechazar');
 
     Route::get('/reportes', function() {
         if (Auth::user()->email !== 'admin@sneakerslh.com') abort(403);
@@ -654,60 +665,49 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
         return back()->with('success', 'El usuario ha sido eliminado del sistema.');
     })->name('admin.usuarios.destroy');
 
-    Route::delete('/admin/pedidos/{id}/rechazar', function ($id) {
-        if (Auth::user()->email !== 'admin@sneakerslh.com') abort(403);
-
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-        DB::table('pedidos')->where('id', $id)->delete();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-
-        return back()->with('success', 'El pedido y su comprobante fueron rechazados y eliminados con éxito.');
-    })->name('admin.pedidos.rechazar');
-
     // Ruta temporal para verificar usuarios y poblar el catálogo
-Route::get('/setup-inicial', function () {
-    // 1. Asegurar que los roles existan
-    \DB::table('roles')->insertOrIgnore([
-        ['id' => 1, 'nombre' => 'Administrador', 'created_at' => now(), 'updated_at' => now()],
-        ['id' => 2, 'nombre' => 'Cliente', 'created_at' => now(), 'updated_at' => now()],
-    ]);
-
-    // 2. Crear o actualizar la contraseña del Admin a: admin12345
-    \App\Models\User::updateOrCreate(
-        ['email' => 'admin@sneakerslh.com'],
-        [
-            'rol_id' => 1,
-            'nombre' => 'Admin',
-            'apellido' => 'SneakersLH',
-            'password' => \Illuminate\Support\Facades\Hash::make('admin12345'),
-            'telefono' => '3001234567',
-        ]
-    );
-
-    // 3. Crear productos de prueba
-    // Ajusta 'productos' si tu modelo/tabla tiene otro nombre
-    if (\Schema::hasTable('productos')) {
-        \DB::table('productos')->insertOrIgnore([
-            [
-                'id' => 1,
-                'nombre' => 'Nike Air Force 1',
-                'descripcion' => 'Diseño clásico urbano.',
-                'precio' => 120.00,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'id' => 2,
-                'nombre' => 'Adidas Ultraboost',
-                'descripcion' => 'Zapatillas deportivas cómodas.',
-                'precio' => 150.00,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
+    Route::get('/setup-inicial', function () {
+        // 1. Asegurar que los roles existan
+        DB::table('roles')->insertOrIgnore([
+            ['id' => 1, 'nombre' => 'Administrador', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 2, 'nombre' => 'Cliente', 'created_at' => now(), 'updated_at' => now()],
         ]);
-    }
 
-    return "✅ ¡Setup completado! Admin creado (admin@sneakerslh.com / admin12345) y productos insertados en el catálogo.";
-});
+        // 2. Crear o actualizar la contraseña del Admin
+        User::updateOrCreate(
+            ['email' => 'admin@sneakerslh.com'],
+            [
+                'rol_id'   => 1,
+                'nombre'   => 'Admin',
+                'apellido' => 'SneakersLH',
+                'password' => Hash::make('admin12345'),
+                'telefono' => '3001234567',
+            ]
+        );
+
+        // 3. Crear productos de prueba
+        if (\Schema::hasTable('productos')) {
+            DB::table('productos')->insertOrIgnore([
+                [
+                    'id'          => 1,
+                    'nombre'      => 'Nike Air Force 1',
+                    'descripcion' => 'Diseño clásico urbano.',
+                    'precio'      => 120.00,
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ],
+                [
+                    'id'          => 2,
+                    'nombre'      => 'Adidas Ultraboost',
+                    'descripcion' => 'Zapatillas deportivas cómodas.',
+                    'precio'      => 150.00,
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ]
+            ]);
+        }
+
+        return "✅ ¡Setup completado! Admin creado (admin@sneakerslh.com / admin12345) y productos insertados en el catálogo.";
+    });
 
 });
