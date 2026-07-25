@@ -27,7 +27,17 @@ class DatabaseSeeder extends Seeder
             ['id' => 3, 'nombre' => 'Casual', 'created_at' => now(), 'updated_at' => now()],
         ]);
 
-        // 3. Crear Administrador si no existe
+        // 3. Insertar Tallas Base (36 a 44)
+        $tallas = [36, 37, 38, 39, 40, 41, 42, 43, 44];
+        foreach ($tallas as $talla) {
+            DB::table('tallas')->insertOrIgnore([
+                'numero' => $talla,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // 4. Crear Administrador si no existe
         if (!User::where('email', 'admin@sneakerslh.com')->exists()) {
             User::create([
                 'rol_id' => 1,
@@ -39,7 +49,7 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // 4. Crear Cliente de prueba si no existe
+        // 5. Crear Cliente de prueba si no existe
         if (!User::where('email', 'juan@gmail.com')->exists()) {
             User::create([
                 'rol_id' => 2,
