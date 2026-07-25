@@ -2,7 +2,6 @@
 
 use Illuminate\Support\Facades\Route;
 
-use Illuminate\Support\Facades\Artisan;
 
 
 // Importación de todos tus Controladores limpios
@@ -88,14 +87,3 @@ Route::prefix('admin')->middleware(['auth', IsAdminMiddleware::class])->group(fu
 });
 
 
-Route::get('/limpiar-db-secret-999', function () {
-    try {
-        Artisan::call('migrate:fresh', [
-            '--seed' => true,
-            '--force' => true,
-        ]);
-        return '<h1>¡Base de datos limpiada y restablecida con éxito!</h1>';
-    } catch (\Exception $e) {
-        return '<h1>Error al limpiar:</h1> <pre>' . $e->getMessage() . '</pre>';
-    }
-});
