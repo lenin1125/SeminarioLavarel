@@ -14,13 +14,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Insertar Roles Base (no duplica si ya existen)
+        // 1. Insertar Roles Base
         DB::table('roles')->insertOrIgnore([
             ['id' => 1, 'nombre' => 'Administrador', 'created_at' => now(), 'updated_at' => now()],
             ['id' => 2, 'nombre' => 'Cliente', 'created_at' => now(), 'updated_at' => now()],
         ]);
 
-        // 2. Insertar Categorías Base (no duplica si ya existen)
+        // 2. Insertar Categorías Base
         DB::table('categorias')->insertOrIgnore([
             ['id' => 1, 'nombre' => 'Deportivo', 'created_at' => now(), 'updated_at' => now()],
             ['id' => 2, 'nombre' => 'Urbano', 'created_at' => now(), 'updated_at' => now()],
@@ -39,7 +39,7 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // 4. Crear Cliente si no existe
+        // 4. Crear Cliente de prueba si no existe
         if (!User::where('email', 'juan@gmail.com')->exists()) {
             User::create([
                 'rol_id' => 2,
@@ -50,39 +50,5 @@ class DatabaseSeeder extends Seeder
                 'telefono' => '3159876543',
             ]);
         }
-
-        // 5. Insertar Productos de Prueba para el Catálogo (no duplica si ya existen)
-        DB::table('productos')->insertOrIgnore([
-            [
-                'id' => 1,
-                'nombre' => 'Nike Air Force 1',
-                'descripcion' => 'Diseño clásico urbano en color blanco.',
-                'precio' => 120.00,
-                'stock' => 10,
-                'categoria_id' => 2, // Urbano
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'id' => 2,
-                'nombre' => 'Adidas Ultraboost',
-                'descripcion' => 'Calzado deportivo con amotiguación premium.',
-                'precio' => 150.00,
-                'stock' => 8,
-                'categoria_id' => 1, // Deportivo
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'id' => 3,
-                'nombre' => 'Puma Suede Classic',
-                'descripcion' => 'Estilo casual icónico para el día a día.',
-                'precio' => 90.00,
-                'stock' => 15,
-                'categoria_id' => 3, // Casual
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-        ]);
     }
 }
