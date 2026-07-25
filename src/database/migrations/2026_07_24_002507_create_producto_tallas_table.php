@@ -8,17 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('producto_tallas', function (Blueprint $table) {
+        // Cambiamos 'producto_tallas' por 'producto_talla' (Singular)
+        Schema::create('producto_talla', function (Blueprint $table) {
             $table->id();
             $table->foreignId('producto_id')->constrained('productos')->onDelete('cascade');
-            $table->string('talla'); // Ej: "38", "39", "40" o "US 8"
-            $table->integer('stock')->default(0); // Cantidad disponible
+            $table->foreignId('talla_id')->constrained('tallas')->onDelete('cascade');
+            $table->integer('stock')->default(0);
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('producto_tallas');
+        Schema::dropIfExists('producto_talla');
     }
 };
