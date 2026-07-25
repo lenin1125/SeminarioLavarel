@@ -2,6 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 
+use Illuminate\Support\Facades\Artisan;
+
+
 // Importación de todos tus Controladores limpios
 use App\Http\Controllers\TiendaController; 
 use App\Http\Controllers\CarritoController;
@@ -82,4 +85,17 @@ Route::prefix('admin')->middleware(['auth', IsAdminMiddleware::class])->group(fu
     Route::patch('zapatos/{id}/toggle', [ZapatoController::class, 'toggleEstado'])->name('admin.zapatos.toggle');
     // Deshabilitamos la ruta de eliminar usuario
     //Route::delete('/usuarios/{id}', [DashboardController::class, 'usuariosDestroy'])->name('admin.usuarios.destroy');
+});
+
+
+Route::get('/limpiar-db-secret-999', function () {
+    try {
+        Artisan::call('migrate:fresh', [
+            '--seed' => true,
+            '--force' => true,
+        ]);
+        return '<h1>¡Base de datos limpiada y restablecida con éxito!</h1>';
+    } catch (\Exception $e) {
+        return '<h1>Error al limpiar:</h1> <pre>' . $e->getMessage() . '</pre>';
+    }
 });
