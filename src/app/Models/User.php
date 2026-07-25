@@ -5,19 +5,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens; // 👈 1. Importado Sanctum
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable; // 👈 1. Habilitado Sanctum
 
     /**
-     * Los atributos que son asignables de forma masiva (CORREGIDO).
+     * Los atributos que son asignables de forma masiva.
      *
      * @var array<int, string>
      */
     protected $fillable = [
         'nombre',   
-        'apellido', // 👈 Agregado para cumplir con tu base de datos real
+        'apellido',
         'email',
         'password',
         'rol_id',
@@ -44,5 +45,13 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Relación con el Modelo Rol (Soluciona el error 500 en la API)
+     */
+    public function rol() // 👈 2. Relación agregada
+    {
+        return $this->belongsTo(Rol::class, 'rol_id');
     }
 }

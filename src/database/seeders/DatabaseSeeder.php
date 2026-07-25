@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Insertar Roles Base
+        // 1. Insertar Roles Base (Seguro: insertOrIgnore evita duplicados)
         DB::table('roles')->insertOrIgnore([
             ['id' => 1, 'nombre' => 'Administrador', 'created_at' => now(), 'updated_at' => now()],
             ['id' => 2, 'nombre' => 'Cliente', 'created_at' => now(), 'updated_at' => now()],
@@ -28,41 +28,38 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 3. Insertar Tallas Base (36 a 44) de forma limpia
-$tallas = [36, 37, 38, 39, 40, 41, 42, 43, 44];
+        $tallas = [36, 37, 38, 39, 40, 41, 42, 43, 44];
 
-// Limpiamos la tabla primero o borramos duplicados si los hay
-DB::table('tallas')->truncate(); 
+        // Usamos updateOrInsert en lugar de truncate para no romper las relaciones (llaves foráneas)
+        foreach ($tallas as $talla) {
+            DB::table('tallas')->updateOrInsert(
+                ['numero' => $talla], // Busca si ya existe este número
+                ['created_at' => now(), 'updated_at' => now()] // Si no existe, lo crea
+            );
+        }
 
-foreach ($tallas as $talla) {
-    DB::table('tallas')->insert([
-        'numero' => $talla, // O 'talla' según el nombre de tu columna
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-}
-
-        // 4. Crear Administrador si no existe
-        if (!User::where('email', 'admin@sneakerslh.com')->exists()) {
-            User::create([
+        // 4. Crear Administrador (firstOrCreate es más limpio y propio de Laravel)
+        User::firstOrCreate(
+            ['email' => 'admin@sneakerslh.com'], // Condición de búsqueda
+            [
                 'rol_id' => 1,
                 'nombre' => 'Admin',
                 'apellido' => 'SneakersLH',
-                'email' => 'admin@sneakerslh.com',
                 'password' => Hash::make('admin12345'),
                 'telefono' => '3001234567',
-            ]);
-        }
+            ] // Datos a crear si no lo encuentra
+        );
 
-        // 5. Crear Cliente de prueba si no existe
-        if (!User::where('email', 'juan@gmail.com')->exists()) {
-            User::create([
+        // 5. Crear Cliente de prueba
+        User::firstOrCreate(
+            ['email' => 'juan@gmail.com'],
+            [
                 'rol_id' => 2,
                 'nombre' => 'Juan',
                 'apellido' => 'Perez',
-                'email' => 'juan@gmail.com',
                 'password' => Hash::make('cliente12345'),
                 'telefono' => '3159876543',
-            ]);
-        }
+            ]
+        );
     }
 }

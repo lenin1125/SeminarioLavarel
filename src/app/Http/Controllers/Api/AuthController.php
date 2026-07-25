@@ -17,9 +17,9 @@ class AuthController extends Controller
     {
         // 1. Validar los datos de entrada
         $validator = Validator::make($request->all(), [
-            'nombre' => 'required|string|max:100',
+            'nombre'   => 'required|string|max:100',
             'apellido' => 'required|string|max:100',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email'    => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6',
             'telefono' => 'nullable|string|max:20',
         ]);
@@ -27,17 +27,17 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors()
+                'errors'  => $validator->errors()
             ], 422);
         }
 
         // 2. Crear el usuario con Rol de Cliente (ID = 2)
         $user = User::create([
-            'rol_id' => 2, // Por defecto se registra como Cliente
-            'nombre' => $request->nombre,
+            'rol_id'   => 2,
+            'nombre'   => $request->nombre,
             'apellido' => $request->apellido,
-            'email' => $request->email,
-            'password' => Hash::make($request->password), // Contraseña encriptada de forma segura
+            'email'    => $request->email,
+            'password' => Hash::make($request->password),
             'telefono' => $request->telefono,
         ]);
 
@@ -45,16 +45,17 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'success' => true,
-            'message' => 'Usuario registrado exitosamente.',
+            'success'      => true,
+            'message'      => 'Usuario registrado exitosamente.',
             'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => [
-                'id' => $user->id,
-                'nombre' => $user->nombre,
+            'token_type'   => 'Bearer',
+            'user'         => [
+                'id'       => $user->id,
+                'nombre'   => $user->nombre,
                 'apellido' => $user->apellido,
-                'email' => $user->email,
-                'rol' => 'Cliente'
+                'email'    => $user->email,
+                'rol_id'   => $user->rol_id,
+                'rol'      => 'Cliente'
             ]
         ], 201);
     }
@@ -66,19 +67,19 @@ class AuthController extends Controller
     {
         // 1. Validar campos obligatorios
         $validator = Validator::make($request->all(), [
-            'email' => 'required|string|email',
+            'email'    => 'required|string|email',
             'password' => 'required|string',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors()
+                'errors'  => $validator->errors()
             ], 422);
         }
 
         // 2. Buscar si el usuario existe
-        $user = User::with('rol')->where('email', $request->email)->first();
+        $user = User::where('email', $request->email)->first();
 
         // 3. Verificar contraseña
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -91,17 +92,45 @@ class AuthController extends Controller
         // 4. Generar token
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        // Determinar nombre del rol sin fallos
+        $nombreRol = optional($user->rol)->nombre 
+            ?? ((int)$user->rol_id === 1 ? 'Administrador' : 'Cliente');
+
+        return response()->json([
+            'success'      => true,
+            'message'      => 'Sesión iniciada con éxito.',
+            'access_token' => $token,
+            'token_type'   => 'Bearer',
+            'user'         => [
+                'id'       => $user->id,
+                'nombre'   => $user->nombre,
+                'apellido' => $user->apellido,
+                'email'    => $user->email,
+                'rol_id'   => $user->rol_id,
+                'rol'      => $nombreRol
+            ]
+        ], 200);
+    }
+
+    /**
+     * Obtener el perfil del usuario autenticado
+     */
+    public function me(Request $request)
+    {
+        $user = $request->user();
+        $nombreRol = optional($user->rol)->nombre 
+            ?? ((int)$user->rol_id === 1 ? 'Administrador' : 'Cliente');
+
         return response()->json([
             'success' => true,
-            'message' => 'Sesión iniciada con éxito.',
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => [
-                'id' => $user->id,
-                'nombre' => $user->nombre,
+            'user'    => [
+                'id'       => $user->id,
+                'nombre'   => $user->nombre,
                 'apellido' => $user->apellido,
-                'email' => $user->email,
-                'rol' => $user->rol->nombre // Devolverá "Administrador" o "Cliente"
+                'email'    => $user->email,
+                'telefono' => $user->telefono,
+                'rol_id'   => $user->rol_id,
+                'rol'      => $nombreRol
             ]
         ], 200);
     }
@@ -111,8 +140,9 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        // Revocar el token con el que el usuario hizo la petición actual
-        $request->user()->currentAccessToken()->delete();
+        if ($request->user() && $request->user()->currentAccessToken()) {
+            $request->user()->currentAccessToken()->delete();
+        }
 
         return response()->json([
             'success' => true,

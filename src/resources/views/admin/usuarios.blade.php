@@ -77,18 +77,12 @@
                                 @endif
                             </td>
 
-                            <!-- Acciones (Eliminar) -->
+                            <!-- Columna de Acción / Estado -->
                             <td class="p-4 text-center whitespace-nowrap">
-                                @if($user->email !== 'admin@sneakerslh.com')
-                                    <form action="{{ route('admin.usuarios.destroy', $user->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de eliminar este usuario?');" class="inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">
-                                            🗑️ Eliminar
-                                        </button>
-                                    </form>
+                                @if($user->email === 'admin@sneakerslh.com')
+                                    <span class="text-[10px] text-gray-600 font-bold uppercase tracking-wider">Protegido</span>
                                 @else
-                                    <span class="text-[10px] text-gray-600 uppercase font-bold">Protegido</span>
+                                    <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Activo</span>
                                 @endif
                             </td>
                         </tr>

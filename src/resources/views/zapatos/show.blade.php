@@ -87,7 +87,7 @@
         /* CONTENEDOR PRINCIPAL DEL DETALLE */
         main {
             max-width: 1100px;
-            margin: 50px auto;
+            margin: 40px auto;
             padding: 0 20px;
             box-sizing: border-box;
         }
@@ -118,6 +118,7 @@
             border-radius: 12px;
             overflow: hidden;
             border: 1px solid #1f2937;
+            position: relative;
         }
 
         .image-viewer img {
@@ -211,6 +212,19 @@
             background: #4f46e5;
         }
 
+        .btn-disabled {
+            width: 100%;
+            padding: 15px;
+            background: #1f2937;
+            color: #6b7280;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: not-allowed;
+            margin-top: 15px;
+        }
+
         .back-action-link {
             display: inline-block;
             margin-top: 25px;
@@ -227,10 +241,14 @@
 </head>
 <body>
 
+    @php
+        $isActivo = $producto->activo ?? true;
+    @endphp
+
     <!-- MENÚ SUPERIOR -->
     <header>
         <a href="{{ route('tienda.index') }}" class="logo-box">
-            <img src="/logo.jpg" alt="Logo" class="logo-img">
+            <img src="{{ asset('logo.jpg') }}" alt="Logo" class="logo-img">
             <div class="brand-text-wrapper">
                 <span class="logo-title">SneakersLH</span>
                 <span class="logo-subtitle">Tu estilo, a cada paso</span>
@@ -238,13 +256,28 @@
         </a>
         
         <div class="nav-actions">
-            @auth
-                <a href="{{ route('carrito.index') }}" class="btn-nav">🛒 Mi Carrito</a>
-            @else
-                <a href="/login" class="btn-nav" style="background:#6366f1;">Ingresar</a>
-            @endauth
+            <a href="{{ route('carrito.index') }}" class="btn-nav">🛒 Mi Carrito</a>
+            @guest
+                <a href="{{ route('login') }}" class="btn-nav" style="background:#6366f1;">Ingresar</a>
+            @endguest
         </div>
     </header>
+
+    <!-- ALERTAS Y MENSAJES DE ERROR / ÉXITO -->
+    <div class="max-w-[1100px] mx-auto px-5 mt-6">
+        @if(session('success'))
+            <div class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-4 py-3 rounded-xl flex items-center gap-2 mb-4">
+                <span>✨</span>
+                <span>{{ session('success') }}</span>
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold px-4 py-3 rounded-xl flex items-center gap-2 mb-4">
+                <span>⚠️</span>
+                <span>{{ session('error') }}</span>
+            </div>
+        @endif
+    </div>
 
     <!-- BLOQUE PRINCIPAL -->
     <main>
@@ -252,7 +285,20 @@
             
             <!-- DETALLE DE FOTO -->
             <div class="image-viewer">
-                <img src="{{ $producto->imagen_url }}" alt="{{ $producto->nombre }}">
+                @if($producto->imagen_url)
+                    <img src="{{ $producto->imagen_url }}" 
+                         alt="{{ $producto->nombre }}"
+                         class="{{ !$isActivo ? 'grayscale opacity-50' : '' }}">
+                @else
+                    <div class="w-full h-full flex items-center justify-center text-6xl">👟</div>
+                @endif
+
+                <!-- Insignia de Estado -->
+                @if(!$isActivo)
+                    <span class="absolute top-4 left-4 bg-rose-600 border border-rose-500 text-white text-xs font-black uppercase px-3 py-1.5 rounded-md shadow-lg">
+                        🚫 AGOTADO
+                    </span>
+                @endif
             </div>
 
             <!-- CONTENEDOR DE COMPRA -->
@@ -261,96 +307,111 @@
                 <h1 class="product-title">{{ $producto->nombre }}</h1>
                 <div class="product-category">Categoría: <strong>{{ $producto->categoria->nombre ?? 'Urbano' }}</strong></div>
                 
-                <div class="price-display">${{ number_format($producto->precio, 0, ',', '.') }} COP</div>
+                <div class="price-display {{ !$isActivo ? 'line-through text-gray-500' : '' }}">
+                    ${{ number_format($producto->precio, 0, ',', '.') }} COP
+                </div>
                 
                 <div class="section-label">Descripción:</div>
                 <p class="description-text">
                     {{ $producto->descripcion ?? 'Este modelo exclusivo no cuenta con una descripción detallada todavía pero mantiene la calidad prémium de nuestra marca.' }}
                 </p>
 
-                <!-- FORMULARIO DE COMPRA CON LÍMITE DINÁMICO DE STOCK -->
+                <!-- FORMULARIO DE COMPRA -->
                 <div class="purchase-box">
-                    <form action="{{ route('carrito.agregar', $producto->id) }}" method="POST">
-                        @csrf
-                        
-                        <!-- SELECCIÓN DE TALLA CON ATRIBUTO DATA-STOCK -->
-                        <div class="mb-6 space-y-3">
-                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">
-                                Selecciona tu Talla (EU):
-                            </label>
-
-                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                @forelse($producto->tallas as $talla)
-                                    @php
-                                        $numeroTalla = $talla->talla ?? $talla->numero ?? $talla->nombre ?? $talla->id;
-                                        // Obtener la cantidad/stock desde la tabla pivote
-                                        $stockDisponible = $talla->pivot->stock ?? $talla->pivot->cantidad ?? $talla->stock ?? 10;
-                                    @endphp
-
-                                    <label class="cursor-pointer relative block group">
-                                        <input type="radio" 
-                                               name="talla" 
-                                               value="{{ $numeroTalla }}" 
-                                               data-stock="{{ $stockDisponible }}"
-                                               onchange="actualizarLimiteStock(this)"
-                                               class="peer hidden" 
-                                               required>
-                                        
-                                        <div class="p-3 bg-gray-900 border border-gray-800 rounded-xl text-center transition-all peer-checked:border-indigo-500 peer-checked:bg-indigo-600/20 group-hover:border-gray-700">
-                                            <span class="block text-white font-bold text-sm">EU {{ $numeroTalla }}</span>
-                                            <span class="block text-[11px] {{ $stockDisponible > 0 ? 'text-emerald-400' : 'text-red-400' }} font-semibold mt-0.5">
-                                                {{ $stockDisponible > 0 ? $stockDisponible . ' disp.' : 'Agotado' }}
-                                            </span>
-                                        </div>
-                                    </label>
-                                @empty
-                                    <div class="col-span-full py-2 text-gray-500 text-xs italic">
-                                        No hay tallas asignadas a este zapato.
-                                    </div>
-                                @endforelse
-                            </div>
-                        </div>
-
-                        <!-- SELECCIÓN DE CANTIDAD ADAPTATIVA -->
-                        <div class="mb-6">
-                            <div class="flex justify-between items-center mb-2">
-                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">
-                                    Cantidad:
-                                </label>
-                                <span id="textoMaxStock" class="text-xs text-indigo-400 font-semibold">
-                                    Selecciona una talla
-                                </span>
-                            </div>
+                    @if($isActivo)
+                        <form action="{{ route('carrito.agregar', $producto->id) }}" method="POST">
+                            @csrf
                             
-                            <div class="flex items-center space-x-3">
-                                <button type="button" 
-                                        onclick="cambiarCantidad(-1)" 
-                                        class="w-10 h-10 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition flex items-center justify-center text-lg">
-                                    -
-                                </button>
-                                
-                                <input type="number" 
-                                       id="cantidadInput" 
-                                       name="cantidad" 
-                                       value="1" 
-                                       min="1" 
-                                       max="1" 
-                                       readonly 
-                                       required 
-                                       class="w-20 bg-gray-900 border border-gray-800 text-white text-center font-bold text-base rounded-xl py-2 focus:outline-none">
-                                
-                                <button type="button" 
-                                        onclick="cambiarCantidad(1)" 
-                                        class="w-10 h-10 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition flex items-center justify-center text-lg">
-                                    +
-                                </button>
-                            </div>
-                        </div>
+                            <!-- SELECCIÓN DE TALLA CON ATRIBUTO DATA-STOCK -->
+                            <div class="mb-6 space-y-3">
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                    Selecciona tu Talla (EU):
+                                </label>
 
-                        <button type="submit" class="btn-add-cart">
-                            Añadir al Carrito
-                        </button>
-                    </form>
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    @forelse($producto->tallas as $talla)
+                                        @php
+                                            $numeroTalla = $talla->talla ?? $talla->numero ?? $talla->nombre ?? $talla->id;
+                                            $stockDisponible = $talla->pivot->stock ?? $talla->pivot->cantidad ?? $talla->stock ?? 0;
+                                            $isAgotada = $stockDisponible <= 0;
+                                        @endphp
+
+                                        <label class="cursor-pointer relative block group {{ $isAgotada ? 'opacity-40 cursor-not-allowed' : '' }}">
+                                            <input type="radio" 
+                                                   name="talla" 
+                                                   value="{{ $numeroTalla }}" 
+                                                   data-stock="{{ $stockDisponible }}"
+                                                   onchange="actualizarLimiteStock(this)"
+                                                   class="peer hidden" 
+                                                   {{ $isAgotada ? 'disabled' : '' }}
+                                                   required>
+                                            
+                                            <div class="p-3 bg-gray-900 border border-gray-800 rounded-xl text-center transition-all peer-checked:border-indigo-500 peer-checked:bg-indigo-600/20 group-hover:border-gray-700">
+                                                <span class="block text-white font-bold text-sm">EU {{ $numeroTalla }}</span>
+                                                <span class="block text-[11px] {{ $stockDisponible > 0 ? 'text-emerald-400' : 'text-red-400' }} font-semibold mt-0.5">
+                                                    {{ $stockDisponible > 0 ? $stockDisponible . ' disp.' : 'Agotado' }}
+                                                </span>
+                                            </div>
+                                        </label>
+                                    @empty
+                                        <div class="col-span-full py-2 text-gray-500 text-xs italic">
+                                            No hay tallas asignadas a este zapato.
+                                        </div>
+                                    @endforelse
+                                </div>
+                            </div>
+
+                            <!-- SELECCIÓN DE CANTIDAD ADAPTATIVA -->
+                            <div class="mb-6">
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                        Cantidad:
+                                    </label>
+                                    <span id="textoMaxStock" class="text-xs text-indigo-400 font-semibold">
+                                        Selecciona una talla disponible
+                                    </span>
+                                </div>
+                                
+                                <div class="flex items-center space-x-3">
+                                    <button type="button" 
+                                            onclick="cambiarCantidad(-1)" 
+                                            class="w-10 h-10 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition flex items-center justify-center text-lg">
+                                        -
+                                    </button>
+                                    
+                                    <input type="number" 
+                                           id="cantidadInput" 
+                                           name="cantidad" 
+                                           value="1" 
+                                           min="1" 
+                                           max="1" 
+                                           readonly 
+                                           required 
+                                           class="w-20 bg-gray-900 border border-gray-800 text-white text-center font-bold text-base rounded-xl py-2 focus:outline-none">
+                                    
+                                    <button type="button" 
+                                            onclick="cambiarCantidad(1)" 
+                                            class="w-10 h-10 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition flex items-center justify-center text-lg">
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn-add-cart">
+                                🛒 Añadir al Carrito
+                            </button>
+                        </form>
+                    @else
+                        <!-- ESTADO CUANDO EL PRODUCTO ESTÁ DESHABILITADO / AGOTADO -->
+                        <div class="text-center py-4">
+                            <p class="text-rose-400 font-bold text-sm mb-3">
+                                🚫 Este producto actualmente no se encuentra disponible.
+                            </p>
+                            <button type="button" disabled class="btn-disabled">
+                                Producto Agotado
+                            </button>
+                        </div>
+                    @endif
                 </div>
 
                 <a href="{{ route('tienda.index') }}" class="back-action-link">← Volver al catálogo principal</a>
@@ -369,9 +430,11 @@
             // Actualiza el máximo permitido en el input
             inputCantidad.setAttribute('max', stockMaximo);
 
-            // Si el valor actual supera el nuevo máximo, se reduce al límite
+            // Ajusta la cantidad actual si supera el stock disponible
             if (parseInt(inputCantidad.value) > stockMaximo) {
                 inputCantidad.value = stockMaximo;
+            } else if (parseInt(inputCantidad.value) < 1) {
+                inputCantidad.value = 1;
             }
 
             // Muestra en texto el límite de la talla seleccionada

@@ -9,31 +9,30 @@ class Producto extends Model
 {
     use HasFactory;
 
-    protected $table = 'productos';
-
     protected $fillable = [
         'nombre',
         'descripcion',
         'precio',
-        'genero', // Agregado al fillable
-        'imagen_url', 
+        'genero',
+        'imagen_url',
         'categoria_id',
+        'activo',
     ];
 
+    /**
+     * Relación con Categoria (Un zapato pertenece a una categoría)
+     */
     public function categoria()
     {
-        return $this->belongsTo(Categoria::class, 'categoria_id');
+        return $this->belongsTo(Categoria::class);
     }
 
-    public function imagenes()
-{
-    return $this->hasMany('App\Models\ProductoImagen'); 
-    // Si tu archivo se llama Producto_Imagen.php, cámbialo por: 'App\Models\Producto_Imagen'
-}
-
-public function tallas()
-{
-    return $this->belongsToMany(Talla::class, 'producto_talla')
-                ->withPivot('cantidad');
-}
+    /**
+     * Relación con Tallas (Muchos a Muchos con la tabla pivote producto_talla)
+     */
+    public function tallas()
+    {
+        return $this->belongsToMany(Talla::class, 'producto_talla')
+                    ->withPivot(['stock', 'cantidad']);
+    }
 }
