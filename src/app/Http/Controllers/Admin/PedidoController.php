@@ -172,14 +172,19 @@ class PedidoController extends Controller
 
     public function confirmadosIndex()
     {
-        $columnasPedidos = DB::getSchemaBuilder()->getColumnListing('pedidos');
-        $columnasUsers   = DB::getSchemaBuilder()->hasTable('users') ? DB::getSchemaBuilder()->getColumnListing('users') : [];
+        // 1. Detectar si la tabla 'users' incluye o no las columnas opcionales 'cedula' y 'telefono'
+        $hasUsersCedula   = DB::getSchemaBuilder()->hasColumn('users', 'cedula');
+        $hasUsersTelefono = DB::getSchemaBuilder()->hasColumn('users', 'telefono');
 
-        $selectBarrio       = in_array('barrio', $columnasPedidos) ? 'pedidos.barrio' : DB::raw("'' as barrio");
-        $selectIndicaciones = in_array('indicaciones', $columnasPedidos) ? 'pedidos.indicaciones' : DB::raw("'' as indicaciones");
-        $selectCedula       = in_array('cedula', $columnasPedidos) ? 'pedidos.cedula' : DB::raw("'' as cedula");
-        $selectUserCedula   = in_array('cedula', $columnasUsers) ? 'users.cedula as user_cedula' : DB::raw("'' as user_cedula");
+        $cedulaSQL = $hasUsersCedula
+            ? "COALESCE(NULLIF(pedidos.cedula, ''), users.cedula, 'No especificada') as cedula"
+            : "COALESCE(NULLIF(pedidos.cedula, ''), 'No especificada') as cedula";
 
+        $telefonoSQL = $hasUsersTelefono
+            ? "COALESCE(NULLIF(pedidos.telefono, ''), users.telefono, 'Sin teléfono') as telefono_final"
+            : "COALESCE(NULLIF(pedidos.telefono, ''), 'Sin teléfono') as telefono_final";
+
+        // 2. Consultar ventas y pedidos confirmados
         $pedidosConfirmados = DB::table('ventas')
             ->join('pedidos', 'ventas.pedido_id', '=', 'pedidos.id')
             ->leftJoin('users', 'pedidos.usuario_id', '=', 'users.id')
@@ -189,33 +194,42 @@ class PedidoController extends Controller
                 'users.nombre as user_nombre',
                 'users.apellido as user_apellido',
                 'users.email as user_email',
-                $selectUserCedula,
-                DB::raw("COALESCE(NULLIF(pedidos.telefono, ''), users.telefono) as telefono_final"),
+                DB::raw($cedulaSQL),
+                DB::raw($telefonoSQL),
                 'pedidos.direccion',
                 'pedidos.ciudad',
                 'pedidos.departamento',
-                $selectBarrio,
-                $selectIndicaciones,
-                $selectCedula,
+                DB::raw("COALESCE(NULLIF(pedidos.barrio, ''), 'No especificado') as barrio"),
+                DB::raw("COALESCE(NULLIF(pedidos.indicaciones, ''), 'Sin observaciones') as indicaciones"),
                 'ventas.monto_total',
                 'ventas.created_at as fecha_confirmacion'
             )
             ->orderBy('ventas.id', 'desc')
             ->paginate(10);
 
-        // Cargar los productos para pedidos confirmados
+        // 3. Detectar nombre de tabla y columna para imágenes de productos
         $columnasProductos = DB::getSchemaBuilder()->hasTable('productos') ? DB::getSchemaBuilder()->getColumnListing('productos') : [];
         $columnaFoto = 'imagen';
         if (in_array('imagen_url', $columnasProductos)) $columnaFoto = 'imagen_url';
         elseif (in_array('foto', $columnasProductos)) $columnaFoto = 'foto';
         elseif (in_array('url', $columnasProductos)) $columnaFoto = 'url';
 
+        $tablaDetalle = 'detalle_pedido';
+        if (!DB::getSchemaBuilder()->hasTable('detalle_pedido')) {
+            if (DB::getSchemaBuilder()->hasTable('detalle_pedidos')) {
+                $tablaDetalle = 'detalle_pedidos';
+            } elseif (DB::getSchemaBuilder()->hasTable('pedido_detalles')) {
+                $tablaDetalle = 'pedido_detalles';
+            }
+        }
+
+        // 4. Asociar productos comprados a cada pedido
         foreach ($pedidosConfirmados as $pedido) {
-            $pedido->detalles = DB::table('detalle_pedido')
-                ->leftJoin('productos', 'detalle_pedido.producto_id', '=', 'productos.id')
-                ->where('detalle_pedido.pedido_id', $pedido->pedido_id)
+            $pedido->detalles = DB::table($tablaDetalle)
+                ->leftJoin('productos', "{$tablaDetalle}.producto_id", '=', 'productos.id')
+                ->where("{$tablaDetalle}.pedido_id", $pedido->pedido_id)
                 ->select(
-                    'detalle_pedido.*',
+                    "{$tablaDetalle}.*",
                     'productos.nombre as producto_nombre',
                     "productos.{$columnaFoto} as producto_imagen"
                 )

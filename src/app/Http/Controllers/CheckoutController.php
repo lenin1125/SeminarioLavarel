@@ -50,26 +50,25 @@ class CheckoutController extends Controller
             }
 
             $user = Auth::user();
-            $columnasPedidos = DB::getSchemaBuilder()->getColumnListing('pedidos');
 
+            // 2. Guardar datos del pedido directamente sin omitir campos
             $datosPedido = [
-                'usuario_id' => Auth::id(),
-                'total'      => $total,
-                'created_at' => now(),
-                'updated_at' => now()
+                'usuario_id'   => Auth::id(),
+                'total'        => $total,
+                'cedula'       => $request->input('cedula'),
+                'telefono'     => $request->input('telefono', $user->telefono ?? null),
+                'direccion'    => $request->input('direccion'),
+                'barrio'       => $request->input('barrio'),
+                'indicaciones' => $request->input('indicaciones'),
+                'ciudad'       => $request->input('ciudad'),
+                'departamento' => $request->input('departamento'),
+                'created_at'   => now(),
+                'updated_at'   => now()
             ];
-
-            if (in_array('cedula', $columnasPedidos)) $datosPedido['cedula'] = $request->input('cedula');
-            if (in_array('telefono', $columnasPedidos)) $datosPedido['telefono'] = $request->input('telefono', $user->telefono ?? null);
-            if (in_array('direccion', $columnasPedidos)) $datosPedido['direccion'] = $request->input('direccion');
-            if (in_array('barrio', $columnasPedidos)) $datosPedido['barrio'] = $request->input('barrio');
-            if (in_array('indicaciones', $columnasPedidos)) $datosPedido['indicaciones'] = $request->input('indicaciones');
-            if (in_array('ciudad', $columnasPedidos)) $datosPedido['ciudad'] = $request->input('ciudad');
-            if (in_array('departamento', $columnasPedidos)) $datosPedido['departamento'] = $request->input('departamento');
 
             $idPedido = DB::table('pedidos')->insertGetId($datosPedido);
 
-            // 2. Detectar nombre exacto de la tabla de detalles
+            // 3. Detectar nombre exacto de la tabla de detalles
             $tablaDetalle = 'detalle_pedido';
             if (!DB::getSchemaBuilder()->hasTable('detalle_pedido')) {
                 if (DB::getSchemaBuilder()->hasTable('detalle_pedidos')) {
@@ -87,7 +86,7 @@ class CheckoutController extends Controller
             $colTalla      = in_array('talla', $columnasDetalle) ? 'talla' : (in_array('numero', $columnasDetalle) ? 'numero' : 'talla');
             $colPrecio     = in_array('precio_unitario', $columnasDetalle) ? 'precio_unitario' : (in_array('precio', $columnasDetalle) ? 'precio' : 'precio_unitario');
 
-            // 3. Guardar cada ítem en el desglose de pedido
+            // 4. Guardar cada ítem en el desglose de pedido
             foreach ($carrito as $key => $item) {
                 $itemData = (array)$item;
 
