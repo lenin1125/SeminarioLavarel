@@ -173,9 +173,12 @@ class PedidoController extends Controller
     public function confirmadosIndex()
     {
         $columnasPedidos = DB::getSchemaBuilder()->getColumnListing('pedidos');
-        $selectBarrio = in_array('barrio', $columnasPedidos) ? 'pedidos.barrio' : DB::raw("'' as barrio");
+        $columnasUsers   = DB::getSchemaBuilder()->hasTable('users') ? DB::getSchemaBuilder()->getColumnListing('users') : [];
+
+        $selectBarrio       = in_array('barrio', $columnasPedidos) ? 'pedidos.barrio' : DB::raw("'' as barrio");
         $selectIndicaciones = in_array('indicaciones', $columnasPedidos) ? 'pedidos.indicaciones' : DB::raw("'' as indicaciones");
-        $selectCedula = in_array('cedula', $columnasPedidos) ? 'pedidos.cedula' : DB::raw("'' as cedula");
+        $selectCedula       = in_array('cedula', $columnasPedidos) ? 'pedidos.cedula' : DB::raw("'' as cedula");
+        $selectUserCedula   = in_array('cedula', $columnasUsers) ? 'users.cedula as user_cedula' : DB::raw("'' as user_cedula");
 
         $pedidosConfirmados = DB::table('ventas')
             ->join('pedidos', 'ventas.pedido_id', '=', 'pedidos.id')
@@ -186,6 +189,7 @@ class PedidoController extends Controller
                 'users.nombre as user_nombre',
                 'users.apellido as user_apellido',
                 'users.email as user_email',
+                $selectUserCedula,
                 DB::raw("COALESCE(NULLIF(pedidos.telefono, ''), users.telefono) as telefono_final"),
                 'pedidos.direccion',
                 'pedidos.ciudad',
@@ -199,29 +203,21 @@ class PedidoController extends Controller
             ->orderBy('ventas.id', 'desc')
             ->paginate(10);
 
-        $tablaCatalogo = DB::getSchemaBuilder()->hasTable('zapatos') ? 'zapatos' : 'productos';
-        $columnasCatalogo = DB::getSchemaBuilder()->hasTable($tablaCatalogo) ? DB::getSchemaBuilder()->getColumnListing($tablaCatalogo) : [];
-        
-        $posiblesFotos = ['imagen', 'foto', 'imagen_url', 'url', 'path'];
-        $columnaFotoEncontrada = null;
-        foreach ($posiblesFotos as $col) {
-            if (in_array($col, $columnasCatalogo)) {
-                $columnaFotoEncontrada = $col;
-                break;
-            }
-        }
-        $selectFoto = $columnaFotoEncontrada 
-            ? "{$tablaCatalogo}.{$columnaFotoEncontrada} as producto_imagen" 
-            : DB::raw("'' as producto_imagen");
+        // Cargar los productos para pedidos confirmados
+        $columnasProductos = DB::getSchemaBuilder()->hasTable('productos') ? DB::getSchemaBuilder()->getColumnListing('productos') : [];
+        $columnaFoto = 'imagen';
+        if (in_array('imagen_url', $columnasProductos)) $columnaFoto = 'imagen_url';
+        elseif (in_array('foto', $columnasProductos)) $columnaFoto = 'foto';
+        elseif (in_array('url', $columnasProductos)) $columnaFoto = 'url';
 
         foreach ($pedidosConfirmados as $pedido) {
             $pedido->detalles = DB::table('detalle_pedido')
-                ->leftJoin($tablaCatalogo, 'detalle_pedido.producto_id', '=', "{$tablaCatalogo}.id")
+                ->leftJoin('productos', 'detalle_pedido.producto_id', '=', 'productos.id')
                 ->where('detalle_pedido.pedido_id', $pedido->pedido_id)
                 ->select(
                     'detalle_pedido.*',
-                    "{$tablaCatalogo}.nombre as producto_nombre",
-                    $selectFoto
+                    'productos.nombre as producto_nombre',
+                    "productos.{$columnaFoto} as producto_imagen"
                 )
                 ->get();
         }
