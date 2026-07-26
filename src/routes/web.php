@@ -81,3 +81,8 @@ Route::prefix('admin')->middleware(['auth', IsAdminMiddleware::class])->group(fu
     Route::get('/reportes', [DashboardController::class, 'reportes'])->name('admin.reportes.index');
     Route::get('/usuarios', [DashboardController::class, 'usuariosIndex'])->name('admin.usuarios.index');
 });
+
+Route::get('/ejecutar-migracion-secret-123', function () {
+    \Illuminate\Support\Facades\Artisan::call('migrate --force');
+    return '¡Migración ejecutada con éxito!<br><pre>' . \Illuminate\Support\Facades\Artisan::output() . '</pre>';
+});

@@ -172,19 +172,48 @@ class PedidoController extends Controller
 
     public function confirmadosIndex()
     {
-        // 1. Detectar si la tabla 'users' incluye o no las columnas opcionales 'cedula' y 'telefono'
+        // 1. Detectar columnas en la tabla 'pedidos'
+        $hasPedidosCedula       = DB::getSchemaBuilder()->hasColumn('pedidos', 'cedula');
+        $hasPedidosBarrio       = DB::getSchemaBuilder()->hasColumn('pedidos', 'barrio');
+        $hasPedidosIndicaciones = DB::getSchemaBuilder()->hasColumn('pedidos', 'indicaciones');
+        $hasPedidosTelefono     = DB::getSchemaBuilder()->hasColumn('pedidos', 'telefono');
+
+        // 2. Detectar columnas en la tabla 'users'
         $hasUsersCedula   = DB::getSchemaBuilder()->hasColumn('users', 'cedula');
         $hasUsersTelefono = DB::getSchemaBuilder()->hasColumn('users', 'telefono');
 
-        $cedulaSQL = $hasUsersCedula
-            ? "COALESCE(NULLIF(pedidos.cedula, ''), users.cedula, 'No especificada') as cedula"
-            : "COALESCE(NULLIF(pedidos.cedula, ''), 'No especificada') as cedula";
+        // Construcción dinámica de Cédula SQL
+        if ($hasPedidosCedula && $hasUsersCedula) {
+            $cedulaSQL = "COALESCE(NULLIF(pedidos.cedula, ''), users.cedula, 'No especificada') as cedula";
+        } elseif ($hasPedidosCedula) {
+            $cedulaSQL = "COALESCE(NULLIF(pedidos.cedula, ''), 'No especificada') as cedula";
+        } elseif ($hasUsersCedula) {
+            $cedulaSQL = "COALESCE(NULLIF(users.cedula, ''), 'No especificada') as cedula";
+        } else {
+            $cedulaSQL = "'No especificada' as cedula";
+        }
 
-        $telefonoSQL = $hasUsersTelefono
-            ? "COALESCE(NULLIF(pedidos.telefono, ''), users.telefono, 'Sin teléfono') as telefono_final"
-            : "COALESCE(NULLIF(pedidos.telefono, ''), 'Sin teléfono') as telefono_final";
+        // Construcción dinámica de Teléfono SQL
+        if ($hasPedidosTelefono && $hasUsersTelefono) {
+            $telefonoSQL = "COALESCE(NULLIF(pedidos.telefono, ''), users.telefono, 'Sin teléfono') as telefono_final";
+        } elseif ($hasPedidosTelefono) {
+            $telefonoSQL = "COALESCE(NULLIF(pedidos.telefono, ''), 'Sin teléfono') as telefono_final";
+        } elseif ($hasUsersTelefono) {
+            $telefonoSQL = "COALESCE(NULLIF(users.telefono, ''), 'Sin teléfono') as telefono_final";
+        } else {
+            $telefonoSQL = "'Sin teléfono' as telefono_final";
+        }
 
-        // 2. Consultar ventas y pedidos confirmados
+        // Construcción dinámica de Barrio e Indicaciones
+        $barrioSQL = $hasPedidosBarrio 
+            ? "COALESCE(NULLIF(pedidos.barrio, ''), 'No especificado') as barrio" 
+            : "'No especificado' as barrio";
+
+        $indicacionesSQL = $hasPedidosIndicaciones 
+            ? "COALESCE(NULLIF(pedidos.indicaciones, ''), 'Sin observaciones') as indicaciones" 
+            : "'Sin observaciones' as indicaciones";
+
+        // 3. Consultar ventas y pedidos confirmados de forma segura
         $pedidosConfirmados = DB::table('ventas')
             ->join('pedidos', 'ventas.pedido_id', '=', 'pedidos.id')
             ->leftJoin('users', 'pedidos.usuario_id', '=', 'users.id')
@@ -199,15 +228,15 @@ class PedidoController extends Controller
                 'pedidos.direccion',
                 'pedidos.ciudad',
                 'pedidos.departamento',
-                DB::raw("COALESCE(NULLIF(pedidos.barrio, ''), 'No especificado') as barrio"),
-                DB::raw("COALESCE(NULLIF(pedidos.indicaciones, ''), 'Sin observaciones') as indicaciones"),
+                DB::raw($barrioSQL),
+                DB::raw($indicacionesSQL),
                 'ventas.monto_total',
                 'ventas.created_at as fecha_confirmacion'
             )
             ->orderBy('ventas.id', 'desc')
             ->paginate(10);
 
-        // 3. Detectar nombre de tabla y columna para imágenes de productos
+        // 4. Detectar imágenes y tabla de detalles
         $columnasProductos = DB::getSchemaBuilder()->hasTable('productos') ? DB::getSchemaBuilder()->getColumnListing('productos') : [];
         $columnaFoto = 'imagen';
         if (in_array('imagen_url', $columnasProductos)) $columnaFoto = 'imagen_url';
@@ -223,7 +252,7 @@ class PedidoController extends Controller
             }
         }
 
-        // 4. Asociar productos comprados a cada pedido
+        // 5. Cargar detalles
         foreach ($pedidosConfirmados as $pedido) {
             $pedido->detalles = DB::table($tablaDetalle)
                 ->leftJoin('productos', "{$tablaDetalle}.producto_id", '=', 'productos.id')
