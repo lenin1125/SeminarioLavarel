@@ -20,7 +20,7 @@
                         <th class="p-4 whitespace-nowrap">N° Venta</th>
                         <th class="p-4">Cliente</th>
                         <th class="p-4">Contacto / WhatsApp</th>
-                        <th class="p-4">Dirección de Envío</th>
+                        <th class="p-4 text-center">Información de Venta</th>
                         <th class="p-4">Monto Pagado</th>
                         <th class="p-4">Fecha Aprobación</th>
                         <th class="p-4 text-center">Estado</th>
@@ -69,16 +69,21 @@
                                 @endif
                             </td>
 
-                            <!-- Dirección de Envío -->
-                            <td class="p-4 text-xs text-gray-300">
-                                @if(!empty($pedido->direccion))
-                                    <div class="font-bold text-white">{{ $pedido->direccion }}</div>
-                                    <div class="text-gray-400 text-[11px]">
-                                        {{ $pedido->ciudad ?? '' }}{{ (!empty($pedido->ciudad) && !empty($pedido->departamento)) ? ', ' : '' }}{{ $pedido->departamento ?? '' }}
-                                    </div>
-                                @else
-                                    <span class="text-gray-500 italic">No especificada</span>
-                                @endif
+                            <!-- Botones Datos de Envío y Productos -->
+                            <td class="p-4 text-center whitespace-nowrap">
+                                <div class="flex items-center justify-center gap-2">
+                                    <button type="button" 
+                                            onclick="openModal('modal-envio-{{ $pedido->pedido_id }}')" 
+                                            class="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer">
+                                        📍 Envío
+                                    </button>
+
+                                    <button type="button" 
+                                            onclick="openModal('modal-productos-conf-{{ $pedido->pedido_id }}')" 
+                                            class="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer">
+                                        📦 Productos
+                                    </button>
+                                </div>
                             </td>
 
                             <!-- Monto Pagado -->
@@ -118,4 +123,116 @@
         @endif
     </div>
 </div>
+
+<!-- MODALES DE DATOS DE ENVÍO Y PRODUCTOS -->
+@foreach($pedidosConfirmados as $pedido)
+    @php
+        $tieneUsuarioActivoModal = !empty($pedido->user_nombre);
+        $nombreClienteModal = $tieneUsuarioActivoModal ? trim($pedido->user_nombre . ' ' . $pedido->user_apellido) : 'Cliente No Registrado';
+        $itemsConf = is_string($pedido->detalles ?? null) ? json_decode($pedido->detalles, true) : ($pedido->detalles ?? []);
+    @endphp
+
+    <!-- MODAL 1: DATOS DE ENVÍO -->
+    <div id="modal-envio-{{ $pedido->pedido_id }}" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full m-4 overflow-hidden shadow-2xl">
+            <div class="p-5 bg-gray-950 border-b border-gray-800 flex justify-between items-center">
+                <h3 class="text-base font-black text-white uppercase tracking-wider flex items-center gap-2">
+                    📍 Ficha de Envío — Pedido #{{ $pedido->pedido_id }}
+                </h3>
+                <button type="button" onclick="closeModal('modal-envio-{{ $pedido->pedido_id }}')" class="text-gray-400 hover:text-white font-bold">✕</button>
+            </div>
+
+            <div class="p-6 space-y-4 text-sm divide-y divide-gray-800/60">
+                <div class="grid grid-cols-2 gap-4 pb-3">
+                    <div>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1">👤 Destinatario</span>
+                        <strong class="text-white font-bold block">{{ $nombreClienteModal }}</strong>
+                    </div>
+                    <div>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1">📞 Teléfono</span>
+                        <span class="text-emerald-400 font-bold block">{{ $pedido->telefono_final ?? 'No especificado' }}</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 pt-3 pb-3">
+                    <div>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1">🗺️ Departamento</span>
+                        <span class="text-gray-200 font-semibold">{{ $pedido->departamento ?? 'No registrado' }}</span>
+                    </div>
+                    <div>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1">🏙️ Ciudad</span>
+                        <span class="text-gray-200 font-semibold">{{ $pedido->ciudad ?? 'No registrado' }}</span>
+                    </div>
+                </div>
+
+                <div class="pt-3 pb-3">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-400 block mb-1">🏘️ Barrio</span>
+                    <span class="text-indigo-200 font-bold bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-lg inline-block">
+                        {{ $pedido->barrio ?? 'No especificado' }}
+                    </span>
+                </div>
+
+                <div class="pt-3 pb-3">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1">🏠 Dirección Exacta</span>
+                    <span class="text-white font-bold block">{{ $pedido->direccion ?? 'No especificada' }}</span>
+                </div>
+            </div>
+
+            <div class="p-4 bg-gray-950 border-t border-gray-800 flex justify-end">
+                <button type="button" onclick="closeModal('modal-envio-{{ $pedido->pedido_id }}')" class="px-4 py-2 bg-gray-800 text-gray-300 font-bold text-xs rounded-xl">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: PRODUCTOS DEL PEDIDO -->
+    <div id="modal-productos-conf-{{ $pedido->pedido_id }}" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full m-4 overflow-hidden shadow-2xl">
+            <div class="p-5 bg-gray-950 border-b border-gray-800 flex justify-between items-center">
+                <h3 class="text-base font-black text-white uppercase tracking-wider flex items-center gap-2">
+                    📦 Productos de la Venta #CONF-{{ str_pad($numeroConsecutivo, 4, '0', STR_PAD_LEFT) }}
+                </h3>
+                <button type="button" onclick="closeModal('modal-productos-conf-{{ $pedido->pedido_id }}')" class="text-gray-400 hover:text-white font-bold">✕</button>
+            </div>
+
+            <div class="p-6 space-y-3 max-h-80 overflow-y-auto">
+                @if(!empty($itemsConf) && is_array($itemsConf))
+                    @foreach($itemsConf as $item)
+                        <div class="flex justify-between items-center bg-gray-950 p-3.5 rounded-xl border border-gray-800">
+                            <div>
+                                <h4 class="text-sm font-bold text-white">{{ $item['nombre'] ?? $item['zapato_nombre'] ?? 'Producto' }}</h4>
+                                <p class="text-xs text-gray-400 mt-0.5">
+                                    Talla: <span class="text-indigo-400 font-bold">{{ $item['talla'] ?? 'N/A' }}</span> | 
+                                    Cantidad: <span class="text-indigo-400 font-bold">{{ $item['cantidad'] ?? 1 }}</span>
+                                </p>
+                            </div>
+                            <span class="text-sm font-black text-emerald-400">
+                                ${{ number_format(($item['precio'] ?? 0) * ($item['cantidad'] ?? 1), 0, ',', '.') }}
+                            </span>
+                        </div>
+                    @endforeach
+                @else
+                    <p class="text-xs text-gray-400 italic text-center py-4">Sin desglose detallado registrado para esta venta.</p>
+                @endif
+            </div>
+
+            <div class="p-4 bg-gray-950 border-t border-gray-800 flex justify-between items-center">
+                <span class="text-xs font-bold text-gray-400">Monto total pagado:</span>
+                <span class="text-base font-black text-emerald-400">${{ number_format($pedido->monto_total, 0, ',', '.') }} COP</span>
+            </div>
+        </div>
+    </div>
+@endforeach
+
+<script>
+function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('hidden');
+}
+function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+}
+</script>
 @endsection

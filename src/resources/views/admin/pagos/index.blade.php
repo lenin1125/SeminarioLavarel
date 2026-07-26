@@ -27,7 +27,7 @@
                         <th class="p-4">Pedidos</th>
                         <th class="p-4">Cliente</th>
                         <th class="p-4">Monto Total</th>
-                        <th class="p-4 text-center">Comprobante</th>
+                        <th class="p-4 text-center">Detalle / Comprobante</th>
                         <th class="p-4 text-center">Acción</th>
                     </tr>
                 </thead>
@@ -44,14 +44,25 @@
                             <td class="p-4 font-bold text-white">{{ $pago->nombre }} {{ $pago->apellido }}</td>
                             <td class="p-4 font-black text-emerald-400">${{ number_format($pago->total, 0, ',', '.') }} COP</td>
                             
+                            <!-- DETALLE DE PEDIDO Y COMPROBANTE -->
                             <td class="p-4 text-center">
-                                @if($pago->comprobante)
-                                    <a href="{{ $pago->comprobante }}" target="_blank" class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow">
-                                        👁️ Ver Imagen
-                                    </a>
-                                @else
-                                    <span class="text-xs text-gray-500">Sin recibo</span>
-                                @endif
+                                <div class="flex items-center justify-center gap-2">
+                                    <!-- Botón Ver Pedido -->
+                                    <button type="button" 
+                                            onclick="openModal('modal-pedido-{{ $pago->pedido_id }}')" 
+                                            class="inline-flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-indigo-300 border border-indigo-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow cursor-pointer">
+                                        📦 Ver Pedido
+                                    </button>
+
+                                    <!-- Botón Ver Imagen / Comprobante -->
+                                    @if($pago->comprobante)
+                                        <a href="{{ $pago->comprobante }}" target="_blank" class="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow">
+                                            👁️ Ver Imagen
+                                        </a>
+                                    @else
+                                        <span class="text-xs text-gray-500">Sin recibo</span>
+                                    @endif
+                                </div>
                             </td>
 
                             <td class="p-4 text-center">
@@ -88,4 +99,78 @@
         </div>
     </div>
 </div>
+
+<!-- MODALES DE DETALLE DE PEDIDO PENDIENTE -->
+@foreach($pagosPorVerificar as $pago)
+    <div id="modal-pedido-{{ $pago->pedido_id }}" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full m-4 overflow-hidden shadow-2xl">
+            <div class="p-5 bg-gray-950 border-b border-gray-800 flex justify-between items-center">
+                <h3 class="text-base font-black text-white uppercase tracking-wider flex items-center gap-2">
+                    📦 Productos Solicitados — Pedido #{{ $loop->iteration }}
+                </h3>
+                <button type="button" onclick="closeModal('modal-pedido-{{ $pago->pedido_id }}')" class="text-gray-400 hover:text-white font-bold text-lg cursor-pointer">&times;</button>
+            </div>
+
+            <div class="p-6 space-y-3 max-h-80 overflow-y-auto">
+                @forelse($pago->detalles ?? [] as $item)
+                    @php
+                        $itemObj = (object)$item;
+                        $nombre   = $itemObj->producto_nombre ?? $itemObj->nombre ?? 'Producto #' . ($itemObj->producto_id ?? '');
+                        $talla    = $itemObj->talla ?? $itemObj->numero ?? 'N/A';
+                        $cantidad = $itemObj->cantidad ?? $itemObj->cant ?? 1;
+                        $precio   = $itemObj->precio_unitario ?? $itemObj->precio ?? 0;
+                        $imagen   = $itemObj->producto_imagen ?? $itemObj->imagen ?? null;
+                    @endphp
+
+                    <div class="flex justify-between items-center bg-gray-950 p-3.5 rounded-xl border border-gray-800">
+                        <div class="flex items-center gap-3">
+                            @if($imagen)
+                                <img src="{{ asset($imagen) }}" alt="{{ $nombre }}" class="w-12 h-12 object-cover rounded-lg border border-gray-800" onerror="this.style.display='none'">
+                            @endif
+                            <div>
+                                <h4 class="text-sm font-bold text-white">{{ $nombre }}</h4>
+                                <p class="text-xs text-gray-400 mt-0.5">
+                                    Talla: <span class="text-indigo-400 font-bold">{{ $talla }}</span> | 
+                                    Cantidad: <span class="text-indigo-400 font-bold">{{ $cantidad }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-[11px] text-gray-400">Unitario: ${{ number_format($precio, 0, ',', '.') }}</span>
+                            <span class="text-sm font-black text-emerald-400">${{ number_format($precio * $cantidad, 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+                @empty
+                    <div class="text-center py-8 text-gray-500">
+                        <p class="text-sm italic">Sin desglose detallado registrado para este pedido.</p>
+                        <p class="text-xs text-gray-600 mt-1">(Este pedido fue realizado antes de activar el registro de detalles)</p>
+                    </div>
+                @endforelse
+            </div>
+
+            <div class="p-4 bg-gray-950 border-t border-gray-800 flex justify-between items-center">
+                <span class="text-xs font-bold text-gray-400">Monto total de venta:</span>
+                <span class="text-base font-black text-emerald-400">${{ number_format($pago->total, 0, ',', '.') }} COP</span>
+            </div>
+
+            <div class="p-4 bg-gray-900 border-t border-gray-800/60 flex justify-end">
+                <button type="button" onclick="closeModal('modal-pedido-{{ $pago->pedido_id }}')" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs rounded-xl transition cursor-pointer">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+@endforeach
+
+<script>
+function openModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.add('hidden');
+}
+</script>
 @endsection

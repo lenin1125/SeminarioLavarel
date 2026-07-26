@@ -10,12 +10,26 @@ class PedidoController extends Controller
 {
     public function pagosIndex()
     {
+        // 1. Detectar automáticamente la columna de comprobante en la tabla 'pagos'
         $columnasPagos = DB::getSchemaBuilder()->getColumnListing('pagos');
-        $columnaImagen = 'comprobante'; 
-        if (in_array('comprobante_pago', $columnasPagos)) $columnaImagen = 'comprobante_pago';
-        elseif (in_array('imagen', $columnasPagos)) $columnaImagen = 'imagen';
-        elseif (in_array('url', $columnasPagos)) $columnaImagen = 'url';
-        elseif (in_array('comprobante_url', $columnasPagos)) $columnaImagen = 'comprobante_url';
+        $posiblesComprobantes = ['comprobante_pago', 'comprobante_url', 'comprobante', 'imagen', 'foto', 'url', 'archivo', 'recibo', 'path'];
+        $columnaImagenEncontrada = null;
+
+        foreach ($posiblesComprobantes as $col) {
+            if (in_array($col, $columnasPagos)) {
+                $columnaImagenEncontrada = $col;
+                break;
+            }
+        }
+
+        $selectComprobante = $columnaImagenEncontrada 
+            ? "pagos.{$columnaImagenEncontrada} as comprobante" 
+            : DB::raw("'' as comprobante");
+
+        // 2. Detectar nombres de usuario en la tabla 'users'
+        $columnasUsers = DB::getSchemaBuilder()->getColumnListing('users');
+        $selectNombre = in_array('nombre', $columnasUsers) ? 'users.nombre' : (in_array('name', $columnasUsers) ? 'users.name as nombre' : DB::raw("'Cliente' as nombre"));
+        $selectApellido = in_array('apellido', $columnasUsers) ? 'users.apellido' : DB::raw("'' as apellido");
 
         $pagosPorVerificar = DB::table('pagos')
             ->join('pedidos', 'pagos.pedido_id', '=', 'pedidos.id')
@@ -23,14 +37,45 @@ class PedidoController extends Controller
             ->select(
                 'pagos.id as pago_id', 
                 'pagos.pedido_id', 
-                "pagos.{$columnaImagen} as comprobante", 
+                $selectComprobante, 
                 'pedidos.total', 
-                'users.nombre', 
-                'users.apellido'
+                $selectNombre, 
+                $selectApellido
             )
             ->orderBy('pagos.id', 'asc')
             ->get();
-            
+
+        // 3. Detectar si la tabla del catálogo es 'zapatos' o 'productos'
+        $tablaCatalogo = DB::getSchemaBuilder()->hasTable('zapatos') ? 'zapatos' : 'productos';
+        $columnasCatalogo = DB::getSchemaBuilder()->hasTable($tablaCatalogo) ? DB::getSchemaBuilder()->getColumnListing($tablaCatalogo) : [];
+        
+        $posiblesFotos = ['imagen', 'foto', 'imagen_url', 'url', 'path'];
+        $columnaFotoEncontrada = null;
+
+        foreach ($posiblesFotos as $col) {
+            if (in_array($col, $columnasCatalogo)) {
+                $columnaFotoEncontrada = $col;
+                break;
+            }
+        }
+
+        $selectFoto = $columnaFotoEncontrada 
+            ? "{$tablaCatalogo}.{$columnaFotoEncontrada} as producto_imagen" 
+            : DB::raw("'' as producto_imagen");
+
+        // 4. Traer el detalle con productos, tallas y cantidades de cada pedido
+        foreach ($pagosPorVerificar as $pago) {
+            $pago->detalles = DB::table('detalle_pedido')
+                ->leftJoin($tablaCatalogo, 'detalle_pedido.producto_id', '=', "{$tablaCatalogo}.id")
+                ->where('detalle_pedido.pedido_id', $pago->pedido_id)
+                ->select(
+                    'detalle_pedido.*',
+                    "{$tablaCatalogo}.nombre as producto_nombre",
+                    $selectFoto
+                )
+                ->get();
+        }
+
         return view('admin.pagos.index', compact('pagosPorVerificar'));
     }
 
@@ -48,17 +93,17 @@ class PedidoController extends Controller
                 'updated_at'  => now()
             ]);
 
-            // 2. Actualizar estado del pedido a 'pagado'
+            // 2. Actualizar estado del pedido
             $columnasPedidos = DB::getSchemaBuilder()->getColumnListing('pedidos');
             $updateData = ['updated_at' => now()];
             if (in_array('estado', $columnasPedidos)) $updateData['estado'] = 'pagado';
             
             DB::table('pedidos')->where('id', $pedido_id)->update($updateData);
 
-            // 3. Eliminar comprobante temporal de la tabla pagos
+            // 3. Eliminar comprobante temporal
             DB::table('pagos')->where('pedido_id', $pedido_id)->delete();
 
-            // 4. DESCONTAR STOCK REAL Y DESACTIVAR SI SE AGOTA
+            // 4. Descontar Stock
             $detalles = DB::table('detalle_pedido')->where('pedido_id', $pedido_id)->get();
 
             if (DB::getSchemaBuilder()->hasTable('producto_talla')) {
@@ -72,7 +117,6 @@ class PedidoController extends Controller
 
                     $queryPivote = DB::table('producto_talla')->where('producto_id', $productoId);
 
-                    // A) Filtrar por talla
                     if (in_array('talla_id', $columnasPivote)) {
                         $tallaId = null;
                         if (DB::getSchemaBuilder()->hasTable('tallas')) {
@@ -90,9 +134,7 @@ class PedidoController extends Controller
                             }
 
                             $tallaObj = $tallaQuery->first();
-                            if ($tallaObj) {
-                                $tallaId = $tallaObj->id;
-                            }
+                            if ($tallaObj) $tallaId = $tallaObj->id;
                         }
 
                         if ($tallaId) {
@@ -104,34 +146,13 @@ class PedidoController extends Controller
                         $queryPivote->where('talla', $tallaComprada);
                     }
 
-                    // Decrementar stock de la talla seleccionada
                     $queryPivote->decrement($columnaStock, $cantidadComprada);
 
-                    // Decrementar stock general si existe en la tabla productos
-                    if (DB::getSchemaBuilder()->hasColumn('productos', 'stock')) {
-                        DB::table('productos')->where('id', $productoId)->decrement('stock', $cantidadComprada);
-                    } elseif (DB::getSchemaBuilder()->hasColumn('productos', 'cantidad')) {
-                        DB::table('productos')->where('id', $productoId)->decrement('cantidad', $cantidadComprada);
-                    }
-
-                    // B) AUTOMATIZACIÓN: Verificar si el producto se quedó sin inventario total
-                    $stockRestanteTallas = DB::table('producto_talla')
-                        ->where('producto_id', $productoId)
-                        ->sum($columnaStock);
-
-                    if ($stockRestanteTallas <= 0) {
-                        $updateCampos = [];
-                        
-                        if (DB::getSchemaBuilder()->hasColumn('productos', 'activo')) {
-                            $updateCampos['activo'] = 0; // Desactiva el producto automáticamente
-                        }
-                        if (DB::getSchemaBuilder()->hasColumn('productos', 'estado')) {
-                            $updateCampos['estado'] = 'Agotado'; // Cambia el estado si existe esa columna
-                        }
-
-                        if (!empty($updateCampos)) {
-                            DB::table('productos')->where('id', $productoId)->update($updateCampos);
-                        }
+                    $tablaCatalogo = DB::getSchemaBuilder()->hasTable('zapatos') ? 'zapatos' : 'productos';
+                    if (DB::getSchemaBuilder()->hasColumn($tablaCatalogo, 'stock')) {
+                        DB::table($tablaCatalogo)->where('id', $productoId)->decrement('stock', $cantidadComprada);
+                    } elseif (DB::getSchemaBuilder()->hasColumn($tablaCatalogo, 'cantidad')) {
+                        DB::table($tablaCatalogo)->where('id', $productoId)->decrement('cantidad', $cantidadComprada);
                     }
                 }
             }
@@ -151,6 +172,11 @@ class PedidoController extends Controller
 
     public function confirmadosIndex()
     {
+        $columnasPedidos = DB::getSchemaBuilder()->getColumnListing('pedidos');
+        $selectBarrio = in_array('barrio', $columnasPedidos) ? 'pedidos.barrio' : DB::raw("'' as barrio");
+        $selectIndicaciones = in_array('indicaciones', $columnasPedidos) ? 'pedidos.indicaciones' : DB::raw("'' as indicaciones");
+        $selectCedula = in_array('cedula', $columnasPedidos) ? 'pedidos.cedula' : DB::raw("'' as cedula");
+
         $pedidosConfirmados = DB::table('ventas')
             ->join('pedidos', 'ventas.pedido_id', '=', 'pedidos.id')
             ->leftJoin('users', 'pedidos.usuario_id', '=', 'users.id')
@@ -164,11 +190,41 @@ class PedidoController extends Controller
                 'pedidos.direccion',
                 'pedidos.ciudad',
                 'pedidos.departamento',
+                $selectBarrio,
+                $selectIndicaciones,
+                $selectCedula,
                 'ventas.monto_total',
                 'ventas.created_at as fecha_confirmacion'
             )
             ->orderBy('ventas.id', 'desc')
             ->paginate(10);
+
+        $tablaCatalogo = DB::getSchemaBuilder()->hasTable('zapatos') ? 'zapatos' : 'productos';
+        $columnasCatalogo = DB::getSchemaBuilder()->hasTable($tablaCatalogo) ? DB::getSchemaBuilder()->getColumnListing($tablaCatalogo) : [];
+        
+        $posiblesFotos = ['imagen', 'foto', 'imagen_url', 'url', 'path'];
+        $columnaFotoEncontrada = null;
+        foreach ($posiblesFotos as $col) {
+            if (in_array($col, $columnasCatalogo)) {
+                $columnaFotoEncontrada = $col;
+                break;
+            }
+        }
+        $selectFoto = $columnaFotoEncontrada 
+            ? "{$tablaCatalogo}.{$columnaFotoEncontrada} as producto_imagen" 
+            : DB::raw("'' as producto_imagen");
+
+        foreach ($pedidosConfirmados as $pedido) {
+            $pedido->detalles = DB::table('detalle_pedido')
+                ->leftJoin($tablaCatalogo, 'detalle_pedido.producto_id', '=', "{$tablaCatalogo}.id")
+                ->where('detalle_pedido.pedido_id', $pedido->pedido_id)
+                ->select(
+                    'detalle_pedido.*',
+                    "{$tablaCatalogo}.nombre as producto_nombre",
+                    $selectFoto
+                )
+                ->get();
+        }
 
         return view('admin.pedidos_confirmados', compact('pedidosConfirmados'));
     }
