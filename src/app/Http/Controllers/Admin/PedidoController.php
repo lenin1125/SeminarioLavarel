@@ -39,21 +39,105 @@ class PedidoController extends Controller
         $pedido = DB::table('pedidos')->where('id', $pedido_id)->first();
         if (!$pedido) return redirect()->back()->with('error', 'El pedido no existe.');
 
-        DB::table('ventas')->insert([
-            'pedido_id'   => $pedido_id,
-            'monto_total' => $pedido->total, 
-            'created_at'  => now(),
-            'updated_at'  => now()
-        ]);
+        DB::transaction(function () use ($pedido_id, $pedido) {
+            // 1. Asentar la venta
+            DB::table('ventas')->insert([
+                'pedido_id'   => $pedido_id,
+                'monto_total' => $pedido->total, 
+                'created_at'  => now(),
+                'updated_at'  => now()
+            ]);
 
-        $columnasPedidos = DB::getSchemaBuilder()->getColumnListing('pedidos');
-        $updateData = ['updated_at' => now()];
-        if (in_array('estado', $columnasPedidos)) $updateData['estado'] = 'pagado';
-        
-        DB::table('pedidos')->where('id', $pedido_id)->update($updateData);
-        DB::table('pagos')->where('pedido_id', $pedido_id)->delete();
+            // 2. Actualizar estado del pedido a 'pagado'
+            $columnasPedidos = DB::getSchemaBuilder()->getColumnListing('pedidos');
+            $updateData = ['updated_at' => now()];
+            if (in_array('estado', $columnasPedidos)) $updateData['estado'] = 'pagado';
+            
+            DB::table('pedidos')->where('id', $pedido_id)->update($updateData);
 
-        return redirect()->back()->with('success', '¡Pago verificado y venta asentada con éxito!');
+            // 3. Eliminar comprobante temporal de la tabla pagos
+            DB::table('pagos')->where('pedido_id', $pedido_id)->delete();
+
+            // 4. DESCONTAR STOCK REAL Y DESACTIVAR SI SE AGOTA
+            $detalles = DB::table('detalle_pedido')->where('pedido_id', $pedido_id)->get();
+
+            if (DB::getSchemaBuilder()->hasTable('producto_talla')) {
+                $columnasPivote = DB::getSchemaBuilder()->getColumnListing('producto_talla');
+                $columnaStock = in_array('stock', $columnasPivote) ? 'stock' : 'cantidad';
+
+                foreach ($detalles as $item) {
+                    $productoId = $item->producto_id;
+                    $cantidadComprada = (int) $item->cantidad;
+                    $tallaComprada = (string) $item->talla;
+
+                    $queryPivote = DB::table('producto_talla')->where('producto_id', $productoId);
+
+                    // A) Filtrar por talla
+                    if (in_array('talla_id', $columnasPivote)) {
+                        $tallaId = null;
+                        if (DB::getSchemaBuilder()->hasTable('tallas')) {
+                            $columnasTallas = DB::getSchemaBuilder()->getColumnListing('tallas');
+                            $tallaQuery = DB::table('tallas');
+
+                            if (in_array('talla', $columnasTallas)) {
+                                $tallaQuery->where('talla', $tallaComprada);
+                            } elseif (in_array('numero', $columnasTallas)) {
+                                $tallaQuery->where('numero', $tallaComprada);
+                            } elseif (in_array('nombre', $columnasTallas)) {
+                                $tallaQuery->where('nombre', $tallaComprada);
+                            } else {
+                                $tallaQuery->where('id', $tallaComprada);
+                            }
+
+                            $tallaObj = $tallaQuery->first();
+                            if ($tallaObj) {
+                                $tallaId = $tallaObj->id;
+                            }
+                        }
+
+                        if ($tallaId) {
+                            $queryPivote->where('talla_id', $tallaId);
+                        } else {
+                            $queryPivote->where('talla_id', $tallaComprada);
+                        }
+                    } elseif (in_array('talla', $columnasPivote)) {
+                        $queryPivote->where('talla', $tallaComprada);
+                    }
+
+                    // Decrementar stock de la talla seleccionada
+                    $queryPivote->decrement($columnaStock, $cantidadComprada);
+
+                    // Decrementar stock general si existe en la tabla productos
+                    if (DB::getSchemaBuilder()->hasColumn('productos', 'stock')) {
+                        DB::table('productos')->where('id', $productoId)->decrement('stock', $cantidadComprada);
+                    } elseif (DB::getSchemaBuilder()->hasColumn('productos', 'cantidad')) {
+                        DB::table('productos')->where('id', $productoId)->decrement('cantidad', $cantidadComprada);
+                    }
+
+                    // B) AUTOMATIZACIÓN: Verificar si el producto se quedó sin inventario total
+                    $stockRestanteTallas = DB::table('producto_talla')
+                        ->where('producto_id', $productoId)
+                        ->sum($columnaStock);
+
+                    if ($stockRestanteTallas <= 0) {
+                        $updateCampos = [];
+                        
+                        if (DB::getSchemaBuilder()->hasColumn('productos', 'activo')) {
+                            $updateCampos['activo'] = 0; // Desactiva el producto automáticamente
+                        }
+                        if (DB::getSchemaBuilder()->hasColumn('productos', 'estado')) {
+                            $updateCampos['estado'] = 'Agotado'; // Cambia el estado si existe esa columna
+                        }
+
+                        if (!empty($updateCampos)) {
+                            DB::table('productos')->where('id', $productoId)->update($updateCampos);
+                        }
+                    }
+                }
+            }
+        });
+
+        return redirect()->back()->with('success', '¡Pago verificado, venta asentada y stock actualizado!');
     }
 
     public function rechazar($id)

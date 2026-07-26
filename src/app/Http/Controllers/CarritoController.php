@@ -111,6 +111,9 @@ class CarritoController extends Controller
             }
         }
 
+        // Liberar la referencia de memoria del puntero &$item
+        unset($item);
+
         session()->put('carrito', $carrito);
 
         return view('carrito', compact('carrito'));

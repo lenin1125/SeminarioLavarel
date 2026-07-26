@@ -38,8 +38,9 @@
             </select>
         </form>
 
-        @if(request('categoria_id'))
-            <a href="{{ route('admin.zapatos.index') }}" class="text-xs text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 transition-all">
+        {{-- El botón se muestra ÚNICAMENTE si hay algún filtro aplicado en la URL --}}
+        @if(count(request()->except('page')) > 0)
+            <a href="{{ route('admin.zapatos.index') }}" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold px-4 py-2.5 rounded-xl transition-all flex items-center gap-2">
                 <span>🧹</span> Limpiar Filtro
             </a>
         @endif

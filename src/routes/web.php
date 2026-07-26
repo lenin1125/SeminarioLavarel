@@ -2,9 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-
-
-// Importación de todos tus Controladores limpios
+// Importación de Controladores
 use App\Http\Controllers\TiendaController; 
 use App\Http\Controllers\CarritoController;
 use App\Http\Controllers\CheckoutController;
@@ -35,16 +33,19 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 /*
 |--------------------------------------------------------------------------
-| 3. Rutas Protegidas de Clientes (Carrito y Checkout)
+| 3. Rutas del Carrito (Públicas: Clientes e Invitados)
+|--------------------------------------------------------------------------
+*/
+Route::get('/carrito', [CarritoController::class, 'index'])->name('carrito.index');
+Route::post('/carrito/agregar/{id}', [CarritoController::class, 'agregar'])->name('carrito.agregar');
+Route::post('/carrito/actualizar/{id}', [CarritoController::class, 'actualizar'])->name('carrito.actualizar');
+
+/*
+|--------------------------------------------------------------------------
+| 4. Rutas de Checkout (Protegidas: Requieren Inicio de Sesión)
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
-    // Carrito
-    Route::get('/carrito', [CarritoController::class, 'index'])->name('carrito.index');
-    Route::post('/carrito/agregar/{id}', [CarritoController::class, 'agregar'])->name('carrito.agregar');
-    Route::post('/carrito/actualizar/{id}', [CarritoController::class, 'actualizar'])->name('carrito.actualizar');
-
-    // Checkout
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout/procesar', [CheckoutController::class, 'procesar'])->name('checkout.procesar');
     Route::get('/checkout/adjuntar-pago', [CheckoutController::class, 'pagoPantalla'])->name('checkout.pago_pantalla');
@@ -53,10 +54,9 @@ Route::middleware(['auth'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| 4. Panel Administrativo
+| 5. Panel Administrativo (Protegido por Autenticación y Rol Admin)
 |--------------------------------------------------------------------------
 */
-// Fíjate cómo ahora llamamos a la clase en lugar de poner la función anónima
 Route::prefix('admin')->middleware(['auth', IsAdminMiddleware::class])->group(function () {
     // Zapatos (Productos)
     Route::get('/zapatos', [ZapatoController::class, 'index'])->name('admin.zapatos.index');
@@ -65,6 +65,7 @@ Route::prefix('admin')->middleware(['auth', IsAdminMiddleware::class])->group(fu
     Route::get('/zapatos/{id}/editar', [ZapatoController::class, 'edit'])->name('admin.zapatos.edit');
     Route::put('/zapatos/{id}', [ZapatoController::class, 'update'])->name('admin.zapatos.update');
     Route::delete('/zapatos/{id}', [ZapatoController::class, 'destroy'])->name('admin.zapatos.destroy');
+    Route::patch('zapatos/{id}/toggle', [ZapatoController::class, 'toggleEstado'])->name('admin.zapatos.toggle');
 
     // Proveedores
     Route::get('/proveedores', [DashboardController::class, 'proveedoresIndex'])->name('admin.proveedores.index');
@@ -79,11 +80,4 @@ Route::prefix('admin')->middleware(['auth', IsAdminMiddleware::class])->group(fu
     // Reportes y Usuarios
     Route::get('/reportes', [DashboardController::class, 'reportes'])->name('admin.reportes.index');
     Route::get('/usuarios', [DashboardController::class, 'usuariosIndex'])->name('admin.usuarios.index');
-
-    //habilitar
-    Route::patch('zapatos/{id}/toggle', [ZapatoController::class, 'toggleEstado'])->name('admin.zapatos.toggle');
-    // Deshabilitamos la ruta de eliminar usuario
-    //Route::delete('/usuarios/{id}', [DashboardController::class, 'usuariosDestroy'])->name('admin.usuarios.destroy');
 });
-
-

@@ -47,7 +47,7 @@
             @auth
                 @if(Auth::user()->email === 'admin@sneakerslh.com')
                     <a href="{{ route('admin.zapatos.index') }}" class="bg-[#111a2e]/40 hover:bg-[#111a2e] border border-[#1f2937] text-gray-400 hover:text-white px-4 py-2.5 rounded-xl text-xs font-medium transition-all">
-                        Panel de administración de ir al →
+                        Panel de administración ir al →
                     </a>
                 @endif
                 <form action="{{ route('logout') }}" method="POST" class="inline">
@@ -70,7 +70,7 @@
     </nav>
 
     <!-- ========================================== -->
-    <!--  ALERTA DE ÉXITO O ERROR                   -->
+    <!--  ALERTA DE ÉXITO, ERRORES Y VALIDACIÓN     -->
     <!-- ========================================== -->
     @if(session('success'))
         <div class="max-w-7xl w-full mx-auto px-8 mt-5">
@@ -80,11 +80,29 @@
             </div>
         </div>
     @endif
+
     @if(session('error'))
         <div class="max-w-7xl w-full mx-auto px-8 mt-5">
             <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold px-4 py-3.5 rounded-xl flex items-center gap-2 shadow-lg animate-fade-in">
                 <span>⚠️</span>
                 <span>{{ session('error') }}</span>
+            </div>
+        </div>
+    @endif
+
+    {{-- Captura errores de inicio de sesión o validación (Contraseña mal, correo no registrado) --}}
+    @if($errors->any())
+        <div class="max-w-7xl w-full mx-auto px-8 mt-5">
+            <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold px-4 py-3.5 rounded-xl flex flex-col gap-1.5 shadow-lg animate-fade-in">
+                <div class="flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>Atención:</span>
+                </div>
+                <ul class="list-disc list-inside space-y-1 font-medium text-rose-300/90 pl-2">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
             </div>
         </div>
     @endif
@@ -114,53 +132,60 @@
     <!--            FILTROS DE BÚSQUEDA            -->
     <!-- ========================================== -->
     <div class="max-w-7xl w-full mx-auto px-8 mt-8">
-        <form method="GET" action="{{ url('/') }}" id="formFiltro" class="bg-gray-950/60 p-6 rounded-2xl border border-gray-800">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                
-                <!-- 1. GÉNERO / ESTILO -->
-                <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
-                        GÉNERO / ESTILO
-                    </label>
-                    <select name="estilo" onchange="this.form.submit()" class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none">
-                        <option value="">Todos los estilos</option>
-                        @foreach($categorias as $cat)
-                            <option value="{{ $cat->id }}" {{ request('estilo') == $cat->id ? 'selected' : '' }}>
-                                {{ $cat->nombre }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <!-- 2. PRECIO MÁXIMO -->
-                <div>
-                    <div class="flex justify-between items-center mb-2">
-                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                            PRECIO MÁXIMO
-                        </label>
-                        <span id="precioFormateado" class="text-sm font-extrabold text-emerald-400">
-                            $ {{ number_format(request('precio_max', $precioMaximoCatalogo ?? 500000), 0, ',', '.') }}
-                        </span>
-                    </div>
-
-                    <input type="range" 
-                           name="precio_max" 
-                           id="sliderPrecio"
-                           min="0" 
-                           max="{{ $precioMaximoCatalogo ?? 500000 }}" 
-                           step="10000"
-                           value="{{ request('precio_max', $precioMaximoCatalogo ?? 500000) }}"
-                           oninput="actualizarTextoPrecio(this.value)"
-                           onchange="this.form.submit()"
-                           class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-emerald-500">
-
-                    <div class="flex justify-between text-[10px] text-gray-500 font-bold mt-1">
-                        <span>$ 0</span>
-                        <span>$ {{ number_format($precioMaximoCatalogo ?? 500000, 0, ',', '.') }}</span>
-                    </div>
-                </div>
-
+        <form method="GET" action="{{ url('/') }}" id="formFiltro" class="bg-gray-950/60 p-6 rounded-2xl border border-gray-800 flex flex-col md:flex-row items-end gap-6 justify-between">
+            
+            <!-- 1. GÉNERO / ESTILO -->
+            <div class="w-full md:flex-1">
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                    GÉNERO / ESTILO
+                </label>
+                <select name="estilo" onchange="this.form.submit()" class="w-full bg-gray-900 border border-gray-800 text-white rounded-xl px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none cursor-pointer">
+                    <option value="">Todos los estilos</option>
+                    @foreach($categorias as $cat)
+                        <option value="{{ $cat->id }}" {{ request('estilo') == $cat->id ? 'selected' : '' }}>
+                            {{ $cat->nombre }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
+
+            <!-- 2. PRECIO MÁXIMO -->
+            <div class="w-full md:flex-1">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                        PRECIO MÁXIMO
+                    </label>
+                    <span id="precioFormateado" class="text-sm font-extrabold text-emerald-400">
+                        $ {{ number_format(request('precio_max', $precioMaximoCatalogo ?? 500000), 0, ',', '.') }}
+                    </span>
+                </div>
+
+                <input type="range" 
+                       name="precio_max" 
+                       id="sliderPrecio"
+                       min="0" 
+                       max="{{ $precioMaximoCatalogo ?? 500000 }}" 
+                       step="10000"
+                       value="{{ request('precio_max', $precioMaximoCatalogo ?? 500000) }}"
+                       oninput="actualizarTextoPrecio(this.value)"
+                       onchange="this.form.submit()"
+                       class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-emerald-500 my-3">
+
+                <div class="flex justify-between text-[10px] text-gray-500 font-bold">
+                    <span>$ 0</span>
+                    <span>$ {{ number_format($precioMaximoCatalogo ?? 500000, 0, ',', '.') }}</span>
+                </div>
+            </div>
+
+            {{-- 3. BOTÓN LIMPIAR FILTROS (Inline al lado de los filtros) --}}
+            @if(count(request()->except('page')) > 0)
+                <div class="w-full md:w-auto flex-shrink-0">
+                    <a href="{{ url('/') }}" class="w-full md:w-auto bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold px-5 h-[46px] rounded-xl transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                        <span>🧹</span> Limpiar Filtros
+                    </a>
+                </div>
+            @endif
+
         </form>
     </div>
 
@@ -172,7 +197,7 @@
     </script>
 
     <!-- ========================================== -->
-    <!--          GRID DE TARJETAS DE TENIS         -->
+    <!--        GRID DE TARJETAS DE TENIS         -->
     <!-- ========================================== -->
     <main class="max-w-7xl w-full mx-auto px-8 my-10 flex-1">
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
