@@ -125,11 +125,11 @@
 </div>
 
 <!-- MODALES DE DATOS DE ENVÍO Y PRODUCTOS -->
-@foreach($pedidosConfirmados as $pedido)
+@foreach($pedidosConfirmados as $index => $pedido)
     @php
+        $numeroConsecutivoModal = $pedidosConfirmados->total() - (($pedidosConfirmados->currentPage() - 1) * $pedidosConfirmados->perPage()) - $loop->index;
         $tieneUsuarioActivoModal = !empty($pedido->user_nombre);
         $nombreClienteModal = $tieneUsuarioActivoModal ? trim($pedido->user_nombre . ' ' . $pedido->user_apellido) : 'Cliente No Registrado';
-        $itemsConf = is_string($pedido->detalles ?? null) ? json_decode($pedido->detalles, true) : ($pedido->detalles ?? []);
     @endphp
 
     <!-- MODAL 1: DATOS DE ENVÍO -->
@@ -139,7 +139,7 @@
                 <h3 class="text-base font-black text-white uppercase tracking-wider flex items-center gap-2">
                     📍 Ficha de Envío — Pedido #{{ $pedido->pedido_id }}
                 </h3>
-                <button type="button" onclick="closeModal('modal-envio-{{ $pedido->pedido_id }}')" class="text-gray-400 hover:text-white font-bold">✕</button>
+                <button type="button" onclick="closeModal('modal-envio-{{ $pedido->pedido_id }}')" class="text-gray-400 hover:text-white font-bold text-lg cursor-pointer">&times;</button>
             </div>
 
             <div class="p-6 space-y-4 text-sm divide-y divide-gray-800/60">
@@ -179,7 +179,7 @@
             </div>
 
             <div class="p-4 bg-gray-950 border-t border-gray-800 flex justify-end">
-                <button type="button" onclick="closeModal('modal-envio-{{ $pedido->pedido_id }}')" class="px-4 py-2 bg-gray-800 text-gray-300 font-bold text-xs rounded-xl">
+                <button type="button" onclick="closeModal('modal-envio-{{ $pedido->pedido_id }}')" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs rounded-xl cursor-pointer">
                     Cerrar
                 </button>
             </div>
@@ -191,30 +191,46 @@
         <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full m-4 overflow-hidden shadow-2xl">
             <div class="p-5 bg-gray-950 border-b border-gray-800 flex justify-between items-center">
                 <h3 class="text-base font-black text-white uppercase tracking-wider flex items-center gap-2">
-                    📦 Productos de la Venta #CONF-{{ str_pad($numeroConsecutivo, 4, '0', STR_PAD_LEFT) }}
+                    📦 Productos de la Venta #CONF-{{ str_pad($numeroConsecutivoModal, 4, '0', STR_PAD_LEFT) }}
                 </h3>
-                <button type="button" onclick="closeModal('modal-productos-conf-{{ $pedido->pedido_id }}')" class="text-gray-400 hover:text-white font-bold">✕</button>
+                <button type="button" onclick="closeModal('modal-productos-conf-{{ $pedido->pedido_id }}')" class="text-gray-400 hover:text-white font-bold text-lg cursor-pointer">&times;</button>
             </div>
 
             <div class="p-6 space-y-3 max-h-80 overflow-y-auto">
-                @if(!empty($itemsConf) && is_array($itemsConf))
-                    @foreach($itemsConf as $item)
-                        <div class="flex justify-between items-center bg-gray-950 p-3.5 rounded-xl border border-gray-800">
+                @forelse($pedido->detalles ?? [] as $item)
+                    @php
+                        $itemObj  = (object)$item;
+                        $nombre   = $itemObj->producto_nombre ?? $itemObj->nombre ?? 'Producto #' . ($itemObj->producto_id ?? '');
+                        $talla    = $itemObj->talla ?? $itemObj->numero ?? 'N/A';
+                        $cantidad = $itemObj->cantidad ?? $itemObj->cant ?? 1;
+                        $precio   = $itemObj->precio_unitario ?? $itemObj->precio ?? 0;
+                        $imagen   = $itemObj->producto_imagen ?? $itemObj->imagen ?? null;
+                    @endphp
+
+                    <div class="flex justify-between items-center bg-gray-950 p-3.5 rounded-xl border border-gray-800">
+                        <div class="flex items-center gap-3">
+                            @if($imagen)
+                                <img src="{{ asset($imagen) }}" alt="{{ $nombre }}" class="w-12 h-12 object-cover rounded-lg border border-gray-800" onerror="this.style.display='none'">
+                            @endif
                             <div>
-                                <h4 class="text-sm font-bold text-white">{{ $item['nombre'] ?? $item['zapato_nombre'] ?? 'Producto' }}</h4>
+                                <h4 class="text-sm font-bold text-white">{{ $nombre }}</h4>
                                 <p class="text-xs text-gray-400 mt-0.5">
-                                    Talla: <span class="text-indigo-400 font-bold">{{ $item['talla'] ?? 'N/A' }}</span> | 
-                                    Cantidad: <span class="text-indigo-400 font-bold">{{ $item['cantidad'] ?? 1 }}</span>
+                                    Talla: <span class="text-indigo-400 font-bold">{{ $talla }}</span> | 
+                                    Cantidad: <span class="text-indigo-400 font-bold">{{ $cantidad }}</span>
                                 </p>
                             </div>
-                            <span class="text-sm font-black text-emerald-400">
-                                ${{ number_format(($item['precio'] ?? 0) * ($item['cantidad'] ?? 1), 0, ',', '.') }}
-                            </span>
                         </div>
-                    @endforeach
-                @else
-                    <p class="text-xs text-gray-400 italic text-center py-4">Sin desglose detallado registrado para esta venta.</p>
-                @endif
+                        <div class="text-right">
+                            <span class="block text-[11px] text-gray-400">Unitario: ${{ number_format($precio, 0, ',', '.') }}</span>
+                            <span class="text-sm font-black text-emerald-400">${{ number_format($precio * $cantidad, 0, ',', '.') }}</span>
+                        </div>
+                    </div>
+                @empty
+                    <div class="text-center py-8 text-gray-500">
+                        <p class="text-sm italic">Sin desglose detallado registrado para esta venta.</p>
+                        <p class="text-xs text-gray-600 mt-1">(Esta venta fue registrada antes de activar el historial de detalles)</p>
+                    </div>
+                @endforelse
             </div>
 
             <div class="p-4 bg-gray-950 border-t border-gray-800 flex justify-between items-center">
