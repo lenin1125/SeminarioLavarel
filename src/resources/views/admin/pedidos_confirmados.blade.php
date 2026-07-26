@@ -60,9 +60,10 @@
                                 <div class="text-xs text-gray-300 font-medium mb-1">
                                     {{ $pedido->user_email ?? 'Sin correo' }}
                                 </div>
-                                @if(!empty($pedido->telefono_final))
-                                    <a href="https://wa.me/57{{ preg_replace('/[^0-9]/', '', $pedido->telefono_final) }}" target="_blank" class="inline-flex items-center gap-1 text-emerald-400 text-xs font-bold hover:underline">
-                                        💬 {{ $pedido->telefono_final }}
+                                @if(!empty($pedido->telefono_final) || !empty($pedido->telefono))
+                                    @php $tel = !empty($pedido->telefono_final) ? $pedido->telefono_final : $pedido->telefono; @endphp
+                                    <a href="https://wa.me/57{{ preg_replace('/[^0-9]/', '', $tel) }}" target="_blank" class="inline-flex items-center gap-1 text-emerald-400 text-xs font-bold hover:underline">
+                                        💬 {{ $tel }}
                                     </a>
                                 @else
                                     <span class="text-[11px] text-gray-500 italic">Sin WhatsApp</span>
@@ -143,38 +144,62 @@
             </div>
 
             <div class="p-6 space-y-4 text-sm divide-y divide-gray-800/60">
-                <div class="grid grid-cols-2 gap-4 pb-3">
+                <!-- Fila 1: Destinatario, Cédula y Teléfono -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pb-3">
                     <div>
                         <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1">👤 Destinatario</span>
-                        <strong class="text-white font-bold block">{{ $nombreClienteModal }}</strong>
+                        <strong class="text-white font-bold block truncate">{{ $nombreClienteModal }}</strong>
+                    </div>
+                    <div>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-400 block mb-1">🆔 Cédula / CC</span>
+                        <span class="text-white font-bold block">
+                            {{ !empty($pedido->cedula) ? $pedido->cedula : (!empty($pedido->user_cedula) ? $pedido->user_cedula : 'No especificada') }}
+                        </span>
                     </div>
                     <div>
                         <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1">📞 Teléfono</span>
-                        <span class="text-emerald-400 font-bold block">{{ $pedido->telefono_final ?? 'No especificado' }}</span>
+                        <span class="text-emerald-400 font-bold block">
+                            {{ !empty($pedido->telefono_final) ? $pedido->telefono_final : (!empty($pedido->telefono) ? $pedido->telefono : 'No especificado') }}
+                        </span>
                     </div>
                 </div>
 
+                <!-- Fila 2: Departamento y Ciudad -->
                 <div class="grid grid-cols-2 gap-4 pt-3 pb-3">
                     <div>
                         <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1">🗺️ Departamento</span>
-                        <span class="text-gray-200 font-semibold">{{ $pedido->departamento ?? 'No registrado' }}</span>
+                        <span class="text-gray-200 font-semibold">{{ !empty($pedido->departamento) ? $pedido->departamento : 'No registrado' }}</span>
                     </div>
                     <div>
                         <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1">🏙️ Ciudad</span>
-                        <span class="text-gray-200 font-semibold">{{ $pedido->ciudad ?? 'No registrado' }}</span>
+                        <span class="text-gray-200 font-semibold">{{ !empty($pedido->ciudad) ? $pedido->ciudad : 'No registrado' }}</span>
                     </div>
                 </div>
 
-                <div class="pt-3 pb-3">
-                    <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-400 block mb-1">🏘️ Barrio</span>
-                    <span class="text-indigo-200 font-bold bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-lg inline-block">
-                        {{ $pedido->barrio ?? 'No especificado' }}
-                    </span>
+                <!-- Fila 3: Barrio e Indicaciones -->
+                <div class="grid grid-cols-2 gap-4 pt-3 pb-3">
+                    <div>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-400 block mb-1">🏘️ Barrio</span>
+                        @if(!empty($pedido->barrio))
+                            <span class="text-indigo-200 font-bold bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-lg inline-block">
+                                {{ $pedido->barrio }}
+                            </span>
+                        @else
+                            <span class="text-gray-500 text-xs italic">No especificado</span>
+                        @endif
+                    </div>
+                    <div>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1">📝 Indicaciones</span>
+                        <span class="text-gray-300 text-xs block">
+                            {{ !empty($pedido->indicaciones) ? $pedido->indicaciones : 'Sin observaciones' }}
+                        </span>
+                    </div>
                 </div>
 
+                <!-- Fila 4: Dirección Exacta -->
                 <div class="pt-3 pb-3">
                     <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1">🏠 Dirección Exacta</span>
-                    <span class="text-white font-bold block">{{ $pedido->direccion ?? 'No especificada' }}</span>
+                    <span class="text-white font-bold block">{{ !empty($pedido->direccion) ? $pedido->direccion : 'No especificada' }}</span>
                 </div>
             </div>
 
