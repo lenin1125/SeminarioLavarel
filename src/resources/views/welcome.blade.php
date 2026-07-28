@@ -16,62 +16,10 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between">
 
-    <!-- ========================================== -->
-    <!--     BARRA SUPERIOR ORIGINAL REPLICADA      -->
-    <!-- ========================================== -->
-    <nav class="bg-[#0b0f19] border-b border-[#111827] px-8 py-4 flex items-center justify-between shadow-sm">
-        <!-- Logo Izquierdo Oficial -->
-        <div class="flex items-center gap-4">
-            <div class="w-16 h-16 rounded-xl bg-[#111827] border border-[#1f2937] flex items-center justify-center overflow-hidden shadow-md">
-                <img src="{{ asset('logo.jpg') }}" alt="Logo Zapatillas LH" class="w-full h-full object-cover">
-            </div>
-            <div>
-                <span class="text-white font-black text-lg tracking-wider block">SNEAKERS LH</span>
-                <span class="text-gray-400 font-bold text-[11px] tracking-widest block uppercase">TU ESTILO, A CADA PASO</span>
-            </div>
-        </div>
+    <!-- BARRA NAVEGACIÓN REUTILIZABLE -->
+    @include('layouts.navigation')
 
-        <!-- Menú Derecho Original con Contador -->
-        <div class="flex items-center gap-4 text-sm font-semibold">
-            <!-- Botón Mi Carrito -->
-            <a href="{{ route('carrito.index') }}" class="bg-[#111a2e] border border-[#1f2937] hover:bg-[#1a2642] text-gray-200 px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all relative text-xs font-bold">
-                🛒 Mi Carrito
-                @php
-                    $cartCount = session()->has('carrito') ? count(session('carrito')) : 0;
-                @endphp
-                <span class="absolute -top-2 -right-1.5 bg-[#4f46e5] text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-lg">
-                    {{ $cartCount }}
-                </span>
-            </a>
-            
-            @auth
-                @if(Auth::user()->email === 'admin@sneakerslh.com')
-                    <a href="{{ route('admin.zapatos.index') }}" class="bg-[#111a2e]/40 hover:bg-[#111a2e] border border-[#1f2937] text-gray-400 hover:text-white px-4 py-2.5 rounded-xl text-xs font-medium transition-all">
-                        Panel de administración ir al →
-                    </a>
-                @endif
-                <form action="{{ route('logout') }}" method="POST" class="inline">
-                    @csrf
-                    <button type="submit" class="text-gray-500 hover:text-rose-400 text-xs font-bold ml-2 transition-colors cursor-pointer">
-                        Cerrar Sesión
-                    </button>
-                </form>
-            @else
-                <!-- Botón de Registro -->
-                <a href="/registro" class="bg-[#111a2e] border border-[#1f2937] hover:bg-[#1a2642] text-gray-200 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all">
-                    Registrarse
-                </a>
-                <!-- Botón de Iniciar Sesión -->
-                <a href="{{ route('login') }}" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all">
-                    Iniciar Sesión
-                </a>
-            @endauth
-        </div>
-    </nav>
-
-    <!-- ========================================== -->
-    <!--  ALERTA DE ÉXITO, ERRORES Y VALIDACIÓN     -->
-    <!-- ========================================== -->
+    <!-- ALERTA DE ÉXITO, ERRORES Y VALIDACIÓN -->
     @if(session('success'))
         <div class="max-w-7xl w-full mx-auto px-8 mt-5">
             <div class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold px-4 py-3.5 rounded-xl flex items-center gap-2 shadow-lg animate-fade-in">
@@ -90,7 +38,6 @@
         </div>
     @endif
 
-    {{-- Captura errores de inicio de sesión o validación (Contraseña mal, correo no registrado) --}}
     @if($errors->any())
         <div class="max-w-7xl w-full mx-auto px-8 mt-5">
             <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-bold px-4 py-3.5 rounded-xl flex flex-col gap-1.5 shadow-lg animate-fade-in">
@@ -107,9 +54,7 @@
         </div>
     @endif
 
-    <!-- ========================================== -->
-    <!--      SECCIÓN HERO CENTRAL (BIENVENIDA)     -->
-    <!-- ========================================== -->
+    <!-- SECCIÓN HERO CENTRAL -->
     <section class="w-full text-center py-16 bg-gradient-to-b from-[#0b0f19] to-[#060913] border-b border-[#111827]/30">
         <div class="max-w-4xl mx-auto px-6 flex flex-col items-center">
             <div class="w-40 h-40 rounded-3xl bg-[#111827] border border-[#1f2937] flex items-center justify-center shadow-2xl overflow-hidden mb-6">
@@ -128,13 +73,10 @@
         </div>
     </section>
 
-    <!-- ========================================== -->
-    <!--            FILTROS DE BÚSQUEDA            -->
-    <!-- ========================================== -->
+    <!-- FILTROS DE BÚSQUEDA -->
     <div class="max-w-7xl w-full mx-auto px-8 mt-8">
         <form method="GET" action="{{ url('/') }}" id="formFiltro" class="bg-gray-950/60 p-6 rounded-2xl border border-gray-800 flex flex-col md:flex-row items-end gap-6 justify-between">
             
-            <!-- 1. GÉNERO / ESTILO -->
             <div class="w-full md:flex-1">
                 <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
                     GÉNERO / ESTILO
@@ -149,7 +91,6 @@
                 </select>
             </div>
 
-            <!-- 2. PRECIO MÁXIMO -->
             <div class="w-full md:flex-1">
                 <div class="flex justify-between items-center mb-2">
                     <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">
@@ -177,7 +118,6 @@
                 </div>
             </div>
 
-            {{-- 3. BOTÓN LIMPIAR FILTROS (Inline al lado de los filtros) --}}
             @if(count(request()->except('page')) > 0)
                 <div class="w-full md:w-auto flex-shrink-0">
                     <a href="{{ url('/') }}" class="w-full md:w-auto bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold px-5 h-[46px] rounded-xl transition-all flex items-center justify-center gap-2 whitespace-nowrap">
@@ -196,9 +136,7 @@
     }
     </script>
 
-    <!-- ========================================== -->
-    <!--        GRID DE TARJETAS DE TENIS         -->
-    <!-- ========================================== -->
+    <!-- GRID DE TARJETAS -->
     <main class="max-w-7xl w-full mx-auto px-8 my-10 flex-1">
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             @forelse($productos as $producto)
@@ -207,7 +145,6 @@
                 @endphp
                 <div class="bg-[#0b0f19] border border-[#1f2937] rounded-2xl overflow-hidden shadow-xl flex flex-col justify-between group hover:border-[#374151] transition-all relative">
                     
-                    <!-- Contenedor Imagen -->
                     <div class="w-full h-64 bg-[#111827] relative overflow-hidden flex items-center justify-center border-b border-[#1f2937]/50">
                         @if($producto->imagen_url)
                             <img src="{{ $producto->imagen_url }}" 
@@ -217,20 +154,17 @@
                             <span class="text-5xl opacity-40">👟</span>
                         @endif
 
-                        <!-- Solo muestra el distintivo SI EL PRODUCTO ESTÁ AGOTADO -->
                         @if(!$isActivo)
                             <span class="absolute top-3 left-3 bg-rose-600 border border-rose-500 text-white text-[9px] font-black uppercase px-2.5 py-1 rounded-md tracking-wider shadow-md z-10">
                                 🚫 Agotado
                             </span>
                         @endif
 
-                        <!-- Etiqueta de Género flotante -->
                         <span class="absolute top-3 right-3 bg-[#5c2163] text-white text-[9px] font-black uppercase px-2.5 py-1 rounded-md tracking-wider z-10">
                             {{ $producto->genero ?? 'UNISEX' }}
                         </span>
                     </div>
 
-                    <!-- Datos del Calzado -->
                     <div class="p-5 flex-1 flex flex-col justify-between">
                         <div>
                             <span class="text-[10px] font-black tracking-widest text-indigo-400 uppercase">
@@ -241,7 +175,6 @@
                             </h3>
                         </div>
 
-                        <!-- Precio y Botón -->
                         <div class="flex items-center justify-between mt-6 pt-4 border-t border-[#1f2937]/50">
                             <span class="{{ $isActivo ? 'text-[#10b981]' : 'text-gray-500 line-through' }} font-black text-lg tracking-wide">
                                 ${{ number_format($producto->precio, 0, ',', '.') }}
@@ -262,13 +195,9 @@
         </div>
     </main>
 
-    <!-- ========================================== -->
-    <!--     PIE DE PÁGINA REPLICADO AL 100%        -->
-    <!-- ========================================== -->
+    <!-- PIE DE PÁGINA -->
     <footer class="bg-[#0b0f19] border-t border-[#111827] py-12 mt-auto">
         <div class="max-w-7xl mx-auto px-8 grid grid-cols-1 md:grid-cols-3 gap-12">
-            
-            <!-- Columna 1 -->
             <div>
                 <h4 class="text-white font-black text-sm tracking-wider uppercase mb-5">SNEAKERSLH</h4>
                 <p class="text-gray-400 text-sm leading-relaxed max-w-sm">
@@ -276,7 +205,6 @@
                 </p>
             </div>
             
-            <!-- Columna 2 -->
             <div>
                 <h4 class="text-white font-black text-sm tracking-wider uppercase mb-5">CONTACTO</h4>
                 <ul class="space-y-4 text-sm text-gray-400">
@@ -291,7 +219,6 @@
                 </ul>
             </div>
 
-            <!-- Columna 3 -->
             <div>
                 <h4 class="text-white font-black text-sm tracking-wider uppercase mb-5">REDES SOCIALES</h4>
                 <p class="text-gray-400 text-sm mb-5">
@@ -306,7 +233,6 @@
                     </a>
                 </div>
             </div>
-
         </div>
 
         <div class="max-w-7xl mx-auto px-8 mt-10 pt-6 border-t border-[#1f2937]/30 text-center">

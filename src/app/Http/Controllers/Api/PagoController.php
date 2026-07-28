@@ -14,15 +14,6 @@ use Illuminate\Support\Facades\Validator;
 class PagoController extends Controller
 {
     /**
-     * Auxiliar para detectar la columna de stock en la tabla pivote ('stock' o 'cantidad')
-     */
-    private function getColumnaStock()
-    {
-        $columnasPivote = DB::getSchemaBuilder()->getColumnListing('producto_talla');
-        return in_array('stock', $columnasPivote) ? 'stock' : (in_array('cantidad', $columnasPivote) ? 'cantidad' : null);
-    }
-
-    /**
      * 1. Registrar un Pago (Hecho por el Cliente)
      */
     public function registrarPago(Request $request)
@@ -148,8 +139,7 @@ class PagoController extends Controller
             ]);
 
             // Reinstaurar el stock devuelto si la orden fue rechazada
-            $columnaStock = $this->getColumnaStock();
-            if ($columnaStock && $pago->pedido && $pago->pedido->detalles) {
+            if ($pago->pedido && $pago->pedido->detalles) {
                 foreach ($pago->pedido->detalles as $detalle) {
                     $tallaVal = $detalle->talla;
                     $tallaModel = is_numeric($tallaVal) 
@@ -160,7 +150,7 @@ class PagoController extends Controller
                         DB::table('producto_talla')
                             ->where('producto_id', $detalle->producto_id)
                             ->where('talla_id', $tallaModel->id)
-                            ->increment($columnaStock, $detalle->cantidad);
+                            ->increment('stock', $detalle->cantidad);
                     }
                 }
             }

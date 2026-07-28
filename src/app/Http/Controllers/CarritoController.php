@@ -4,20 +4,19 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Producto;
-use Illuminate\Support\Facades\DB;
 
 class CarritoController extends Controller
 {
+    /**
+     * Agregar un producto al carrito de compras
+     */
     public function agregar(Request $request, $id)
     {
-        $columnasPivote = DB::getSchemaBuilder()->getColumnListing('producto_talla');
-        $columnaStock = in_array('stock', $columnasPivote) ? 'stock' : 'cantidad';
-
-        $producto = Producto::with(['tallas' => function($q) use ($columnaStock) {
-            $q->withPivot($columnaStock);
+        $producto = Producto::with(['tallas' => function($q) {
+            $q->withPivot('stock');
         }])->findOrFail($id);
 
-        // 1. VALIDACIÓN: Verificar si el producto está activo/disponible
+        // 1. VALIDACIÓN: Verificar si el producto está activo
         if (isset($producto->activo) && !$producto->activo) {
             return redirect()->back()->with('error', 'Lo sentimos, este producto se encuentra agotado o fuera de servicio.');
         }
@@ -38,8 +37,8 @@ class CarritoController extends Controller
             return redirect()->back()->with('error', 'La talla seleccionada no pertenece a este producto.');
         }
 
-        // 3. Obtener el stock disponible de la tabla pivote
-        $stockDisponible = $tallaModel->pivot->{$columnaStock} ?? 0;
+        // 3. Obtener el stock disponible desde la tabla pivote
+        $stockDisponible = $tallaModel->pivot->stock ?? 0;
 
         if ($stockDisponible <= 0) {
             return redirect()->back()->with('error', "La talla EU {$tallaElegida} no cuenta con stock disponible actualmente.");
@@ -47,7 +46,7 @@ class CarritoController extends Controller
 
         $cantidadActualEnCarrito = isset($carrito[$itemKey]) ? $carrito[$itemKey]['cantidad'] : 0;
 
-        // 4. Validar que la suma no supere el stock real disponible
+        // 4. Validar que no supere el stock real
         if (($cantidadActualEnCarrito + $cantidadDeseada) > $stockDisponible) {
             return redirect()->back()->with('error', "No hay suficiente stock. Límite disponible para esta talla: {$stockDisponible} unidades.");
         }
@@ -71,22 +70,21 @@ class CarritoController extends Controller
         return redirect()->back()->with('success', 'Producto agregado al carrito exitosamente.');
     }
 
+    /**
+     * Ver la vista del carrito
+     */
     public function index()
     {
         $carrito = session()->get('carrito', []);
 
-        $columnasPivote = DB::getSchemaBuilder()->getColumnListing('producto_talla');
-        $columnaStock = in_array('stock', $columnasPivote) ? 'stock' : 'cantidad';
-
         foreach ($carrito as $key => &$item) {
-            $producto = Producto::with(['tallas' => function($q) use ($columnaStock) {
-                $q->withPivot($columnaStock);
+            $producto = Producto::with(['tallas' => function($q) {
+                $q->withPivot('stock');
             }])->find($item['id']);
 
             $maxStock = 10;
 
             if ($producto) {
-                // Si el producto fue desactivado por el administrador mientras estaba en el carrito
                 if (isset($producto->activo) && !$producto->activo) {
                     $maxStock = 0;
                 } else {
@@ -96,29 +94,29 @@ class CarritoController extends Controller
                     });
 
                     if ($tallaModel && $tallaModel->pivot) {
-                        $maxStock = $tallaModel->pivot->{$columnaStock} ?? 10;
+                        $maxStock = $tallaModel->pivot->stock ?? 10;
                     }
                 }
             } else {
-                $maxStock = 0; // El producto ya no existe en la base de datos
+                $maxStock = 0;
             }
 
             $item['max_stock'] = $maxStock;
 
-            // Ajustar la cantidad en carrito si el stock disponible en BD se redujo
             if ($item['cantidad'] > $maxStock && $maxStock > 0) {
                 $item['cantidad'] = $maxStock;
             }
         }
 
-        // Liberar la referencia de memoria del puntero &$item
         unset($item);
-
         session()->put('carrito', $carrito);
 
         return view('carrito', compact('carrito'));
     }
 
+    /**
+     * Incrementar, decrementar o eliminar ítems del carrito
+     */
     public function actualizar(Request $request, $id)
     {
         $carrito = session()->get('carrito', []);

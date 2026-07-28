@@ -2,44 +2,75 @@
 
 @section('content')
 <div class="p-8">
-    <div class="mb-8 border-b border-gray-800 pb-6 flex flex-col md:flex-row justify-between md:items-center gap-4">
+    <!-- Encabezado de la Sección -->
+    <div class="mb-6 border-b border-gray-800 pb-6 flex flex-col md:flex-row justify-between md:items-center gap-4">
         <div>
-            <h1 class="text-3xl font-black tracking-tight text-white uppercase">Pedidos Confirmados</h1>
-            <p class="text-gray-400 text-sm mt-1">Historial inmutable de ventas aprobadas para registro contable.</p>
+            <h1 class="text-3xl font-black tracking-tight text-white uppercase">Gestión de Pedidos</h1>
+            <p class="text-gray-400 text-sm mt-1">Historial unificado y consulta de órdenes por estado.</p>
         </div>
-        <div class="bg-indigo-600/10 border border-indigo-500/30 text-indigo-400 font-bold px-4 py-2 rounded-xl text-xs">
-            Total Confirmados: {{ $pedidosConfirmados->total() }}
+        <div class="bg-indigo-600/10 border border-indigo-500/30 text-indigo-400 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2">
+            <span>Total en Lista:</span>
+            <span class="text-white font-black">{{ $pedidos->total() }}</span>
         </div>
     </div>
 
+    <!-- BARRA DE FILTROS (PESTAÑAS) -->
+    <div class="flex flex-wrap gap-2 mb-6">
+        <a href="{{ route('admin.pedidos.index', ['estado' => 'todos']) }}" 
+           class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 {{ $filtro === 'todos' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-white border border-gray-800' }}">
+            <span>📋 Todos</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] {{ $filtro === 'todos' ? 'bg-indigo-800 text-white' : 'bg-gray-800 text-gray-400' }}">{{ $conteos['todos'] }}</span>
+        </a>
+
+        <a href="{{ route('admin.pedidos.index', ['estado' => 'confirmados']) }}" 
+           class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 {{ $filtro === 'confirmados' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-emerald-400 border border-gray-800' }}">
+            <span>✅ Confirmados</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] {{ $filtro === 'confirmados' ? 'bg-emerald-800 text-white' : 'bg-gray-800 text-gray-400' }}">{{ $conteos['confirmados'] }}</span>
+        </a>
+
+        <a href="{{ route('admin.pedidos.index', ['estado' => 'pendientes']) }}" 
+           class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 {{ $filtro === 'pendientes' ? 'bg-amber-600 text-white shadow-lg' : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-amber-400 border border-gray-800' }}">
+            <span>⏳ Pendientes</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] {{ $filtro === 'pendientes' ? 'bg-amber-800 text-white' : 'bg-gray-800 text-gray-400' }}">{{ $conteos['pendientes'] }}</span>
+        </a>
+
+        <a href="{{ route('admin.pedidos.index', ['estado' => 'cancelados']) }}" 
+           class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 {{ $filtro === 'cancelados' ? 'bg-rose-600 text-white shadow-lg' : 'bg-gray-900 text-gray-400 hover:bg-gray-800 hover:text-rose-400 border border-gray-800' }}">
+            <span>❌ Cancelados</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] {{ $filtro === 'cancelados' ? 'bg-rose-800 text-white' : 'bg-gray-800 text-gray-400' }}">{{ $conteos['cancelados'] }}</span>
+        </a>
+    </div>
+
+    <!-- TABLA DE PEDIDOS -->
     <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-gray-950 border-b border-gray-800 text-gray-400 text-[11px] font-black uppercase tracking-wider">
-                        <th class="p-4 whitespace-nowrap">N° Venta</th>
+                        <th class="p-4 whitespace-nowrap">N° Pedido</th>
                         <th class="p-4">Cliente</th>
                         <th class="p-4">Contacto / WhatsApp</th>
                         <th class="p-4 text-center">Información de Venta</th>
-                        <th class="p-4">Monto Pagado</th>
-                        <th class="p-4">Fecha Aprobación</th>
+                        <th class="p-4">Monto Total</th>
+                        <th class="p-4">Fecha</th>
                         <th class="p-4 text-center">Estado</th>
+                        <th class="p-4 text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-800 text-sm">
-                    @forelse($pedidosConfirmados as $index => $pedido)
+                    @forelse($pedidos as $pedido)
                         @php
-                            $numeroConsecutivo = $pedidosConfirmados->total() - (($pedidosConfirmados->currentPage() - 1) * $pedidosConfirmados->perPage()) - $loop->index;
-                            
                             $tieneUsuarioActivo = !empty($pedido->user_nombre);
                             $nombreCliente = $tieneUsuarioActivo ? trim($pedido->user_nombre . ' ' . $pedido->user_apellido) : null;
+                            $esConfirmado = $pedido->venta_id || in_array($pedido->estado_pedido, ['confirmado', 'pagado', 'aprobado']);
+                            $esCancelado  = in_array($pedido->estado_pedido, ['cancelado', 'rechazado']);
                         @endphp
                         <tr class="hover:bg-gray-800/50 transition-colors">
                             
-                            <!-- Secuencia Consecutiva -->
+                            <!-- Consecutivo/ID de Pedido -->
                             <td class="p-4 whitespace-nowrap">
                                 <span class="inline-block font-black text-indigo-400 bg-indigo-500/10 border border-indigo-500/30 px-3 py-1.5 rounded-lg text-xs tracking-wider">
-                                    CONF-{{ str_pad($numeroConsecutivo, 4, '0', STR_PAD_LEFT) }}
+                                    #PED-{{ str_pad($pedido->pedido_id, 4, '0', STR_PAD_LEFT) }}
                                 </span>
                             </td>
 
@@ -50,7 +81,7 @@
                                 @else
                                     <div class="flex flex-col">
                                         <span class="text-amber-400 text-xs font-bold">⚠️ Cliente de Venta Histórica</span>
-                                        <span class="text-[10px] text-gray-500 font-normal">(Cuenta de usuario eliminada)</span>
+                                        <span class="text-[10px] text-gray-500 font-normal">(Cuenta eliminada)</span>
                                     </div>
                                 @endif
                             </td>
@@ -70,7 +101,7 @@
                                 @endif
                             </td>
 
-                            <!-- Botones Datos de Envío y Productos -->
+                            <!-- Modales Datos de Envío y Productos -->
                             <td class="p-4 text-center whitespace-nowrap">
                                 <div class="flex items-center justify-center gap-2">
                                     <button type="button" 
@@ -87,29 +118,50 @@
                                 </div>
                             </td>
 
-                            <!-- Monto Pagado -->
+                            <!-- Monto -->
                             <td class="p-4 font-black text-emerald-400 whitespace-nowrap">
                                 ${{ number_format($pedido->monto_total, 0, ',', '.') }} COP
                             </td>
 
-                            <!-- Fecha Aprobación -->
+                            <!-- Fecha -->
                             <td class="p-4 text-gray-300 text-xs whitespace-nowrap">
-                                {{ \Carbon\Carbon::parse($pedido->fecha_confirmacion)->format('d/m/Y - h:i A') }}
+                                {{ \Carbon\Carbon::parse($pedido->fecha)->format('d/m/Y - h:i A') }}
                             </td>
 
-                            <!-- Estado -->
+                            <!-- Estado Badge -->
                             <td class="p-4 text-center whitespace-nowrap">
-                                <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase">
-                                    ✅ Confirmado
-                                </span>
+                                @if($esConfirmado)
+                                    <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase">
+                                        ✅ Confirmado
+                                    </span>
+                                @elseif($esCancelado)
+                                    <span class="bg-rose-500/10 text-rose-400 border border-rose-500/30 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase">
+                                        ❌ Cancelado
+                                    </span>
+                                @else
+                                    <span class="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-[10px] font-bold px-3 py-1.5 rounded-full uppercase">
+                                        ⏳ Pendiente
+                                    </span>
+                                @endif
+                            </td>
+
+                            <!-- Acciones -->
+                            <td class="p-4 text-center whitespace-nowrap">
+                                @if(!$esConfirmado && !$esCancelado)
+                                    <a href="{{ url('/admin/pagos') }}" class="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold transition shadow-sm">
+                                        🔍 Validar Pago
+                                    </a>
+                                @else
+                                    <span class="text-gray-600 text-xs italic">Sin acciones</span>
+                                @endif
                             </td>
 
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="py-12 text-center text-gray-500">
+                            <td colspan="8" class="py-12 text-center text-gray-500">
                                 <span class="text-3xl block mb-2">📦</span>
-                                <p class="font-semibold text-sm">No hay pedidos confirmados registrados aún.</p>
+                                <p class="font-semibold text-sm">No hay pedidos registrados en la categoría <strong class="text-indigo-400 uppercase">{{ $filtro }}</strong>.</p>
                             </td>
                         </tr>
                     @endforelse
@@ -117,18 +169,17 @@
             </table>
         </div>
 
-        @if($pedidosConfirmados->hasPages())
+        @if($pedidos->hasPages())
             <div class="p-4 border-t border-gray-800 bg-gray-950/50">
-                {{ $pedidosConfirmados->links() }}
+                {{ $pedidos->appends(['estado' => $filtro])->links() }}
             </div>
         @endif
     </div>
 </div>
 
 <!-- MODALES DE DATOS DE ENVÍO Y PRODUCTOS -->
-@foreach($pedidosConfirmados as $index => $pedido)
+@foreach($pedidos as $pedido)
     @php
-        $numeroConsecutivoModal = $pedidosConfirmados->total() - (($pedidosConfirmados->currentPage() - 1) * $pedidosConfirmados->perPage()) - $loop->index;
         $tieneUsuarioActivoModal = !empty($pedido->user_nombre);
         $nombreClienteModal = $tieneUsuarioActivoModal ? trim($pedido->user_nombre . ' ' . $pedido->user_apellido) : 'Cliente No Registrado';
     @endphp
@@ -138,13 +189,12 @@
         <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full m-4 overflow-hidden shadow-2xl">
             <div class="p-5 bg-gray-950 border-b border-gray-800 flex justify-between items-center">
                 <h3 class="text-base font-black text-white uppercase tracking-wider flex items-center gap-2">
-                    📍 Ficha de Envío — Pedido #{{ $pedido->pedido_id }}
+                    📍 Ficha de Envío — Pedido #PED-{{ str_pad($pedido->pedido_id, 4, '0', STR_PAD_LEFT) }}
                 </h3>
                 <button type="button" onclick="closeModal('modal-envio-{{ $pedido->pedido_id }}')" class="text-gray-400 hover:text-white font-bold text-lg cursor-pointer">&times;</button>
             </div>
 
             <div class="p-6 space-y-4 text-sm divide-y divide-gray-800/60">
-                <!-- Fila 1: Destinatario, Cédula y Teléfono -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pb-3">
                     <div>
                         <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1">👤 Destinatario</span>
@@ -164,7 +214,6 @@
                     </div>
                 </div>
 
-                <!-- Fila 2: Departamento y Ciudad -->
                 <div class="grid grid-cols-2 gap-4 pt-3 pb-3">
                     <div>
                         <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1">🗺️ Departamento</span>
@@ -176,7 +225,6 @@
                     </div>
                 </div>
 
-                <!-- Fila 3: Barrio e Indicaciones -->
                 <div class="grid grid-cols-2 gap-4 pt-3 pb-3">
                     <div>
                         <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-400 block mb-1">🏘️ Barrio</span>
@@ -196,7 +244,6 @@
                     </div>
                 </div>
 
-                <!-- Fila 4: Dirección Exacta -->
                 <div class="pt-3 pb-3">
                     <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1">🏠 Dirección Exacta</span>
                     <span class="text-white font-bold block">{{ !empty($pedido->direccion) ? $pedido->direccion : 'No especificada' }}</span>
@@ -216,7 +263,7 @@
         <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full m-4 overflow-hidden shadow-2xl">
             <div class="p-5 bg-gray-950 border-b border-gray-800 flex justify-between items-center">
                 <h3 class="text-base font-black text-white uppercase tracking-wider flex items-center gap-2">
-                    📦 Productos de la Venta #CONF-{{ str_pad($numeroConsecutivoModal, 4, '0', STR_PAD_LEFT) }}
+                    📦 Productos del Pedido #PED-{{ str_pad($pedido->pedido_id, 4, '0', STR_PAD_LEFT) }}
                 </h3>
                 <button type="button" onclick="closeModal('modal-productos-conf-{{ $pedido->pedido_id }}')" class="text-gray-400 hover:text-white font-bold text-lg cursor-pointer">&times;</button>
             </div>
@@ -253,7 +300,6 @@
                 @empty
                     <div class="text-center py-8 text-gray-500">
                         <p class="text-sm italic">Sin desglose detallado registrado para esta venta.</p>
-                        <p class="text-xs text-gray-600 mt-1">(Esta venta fue registrada antes de activar el historial de detalles)</p>
                     </div>
                 @endforelse
             </div>

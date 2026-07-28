@@ -5,14 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
     public function reportes()
     {
+        // 1. Métricas superiores para las tarjetas
         $ventasDiarias = DB::table('ventas')
-            ->whereDate('created_at', now()->toDateString())
+            ->whereDate('created_at', now())
             ->sum('monto_total');
 
         $ventasMensuales = DB::table('ventas')
@@ -20,35 +20,49 @@ class DashboardController extends Controller
             ->whereYear('created_at', now()->year)
             ->sum('monto_total');
 
+        // 2. Producto más vendido (se asigna el alias 'total_vendido' que exige la vista)
         $productoMasVendido = DB::table('detalle_pedido')
             ->join('productos', 'detalle_pedido.producto_id', '=', 'productos.id')
-            ->join('ventas', 'detalle_pedido.pedido_id', '=', 'ventas.pedido_id')
             ->select('productos.nombre', DB::raw('SUM(detalle_pedido.cantidad) as total_vendido'))
             ->groupBy('productos.id', 'productos.nombre')
             ->orderByDesc('total_vendido')
             ->first();
 
-        return view('admin.reportes', compact('ventasDiarias', 'ventasMensuales', 'productoMasVendido'));
+        // 3. Gráfico 1: Historial de Ventas (Compatible con MySQL Strict Mode)
+        $ventasPorMes = DB::table('ventas')
+            ->select(
+                DB::raw("DATE_FORMAT(created_at, '%b %Y') as mes_nombre"),
+                DB::raw("SUM(monto_total) as total"),
+                DB::raw("MIN(created_at) as min_fecha")
+            )
+            ->groupBy(DB::raw("DATE_FORMAT(created_at, '%b %Y')"))
+            ->orderBy('min_fecha', 'asc')
+            ->limit(6)
+            ->get();
+
+        // 4. Gráfico 2: Top 5 Productos más vendidos (Para el gráfico de Dona)
+        $topProductos = DB::table('detalle_pedido')
+            ->join('productos', 'detalle_pedido.producto_id', '=', 'productos.id')
+            ->select('productos.nombre', DB::raw('SUM(detalle_pedido.cantidad) as total_unidades'))
+            ->groupBy('productos.id', 'productos.nombre')
+            ->orderByDesc('total_unidades')
+            ->limit(5)
+            ->get();
+
+        return view('admin.reportes', compact(
+            'ventasDiarias',
+            'ventasMensuales',
+            'productoMasVendido',
+            'ventasPorMes',
+            'topProductos'
+        ));
     }
 
-    public function proveedoresIndex()
+    public function index()
     {
-        $proveedores = DB::table('proveedores')->get();
-        return view('admin.proveedores.index', compact('proveedores'));
+        return $this->reportes();
     }
-
-    public function proveedoresStore(Request $request)
-    {
-        DB::table('proveedores')->insert([
-            'nombre'     => $request->nombre,
-            'telefono'   => $request->telefono,
-            'ciudad'     => $request->ciudad,
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
-        return redirect()->back()->with('success', 'Proveedor registrado.');
-    }
-
+    
     public function usuariosIndex()
     {
         $usuarios = DB::table('users')
@@ -68,13 +82,4 @@ class DashboardController extends Controller
         return view('admin.usuarios', compact('usuarios'));
     }
 
-    public function usuariosDestroy($id)
-    {
-        if ((int)$id === Auth::id()) {
-            return back()->with('error', 'No puedes eliminar la cuenta de administrador activa.');
-        }
-
-        DB::table('users')->where('id', $id)->delete();
-        return back()->with('success', 'El usuario ha sido eliminado del sistema.');
-    }
 }

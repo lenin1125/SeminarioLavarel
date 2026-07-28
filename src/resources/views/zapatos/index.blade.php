@@ -24,26 +24,43 @@
         </div>
     @endif
 
-    <!-- Barra de Filtro por Categoría -->
-    <div class="mb-6 bg-gray-900 border border-gray-800 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
-        <form method="GET" action="{{ route('admin.zapatos.index') }}" class="flex items-center gap-3 w-full md:w-auto">
-            <label for="categoria_id" class="text-xs font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">🔍 Filtrar por Categoría:</label>
-            <select name="categoria_id" id="categoria_id" onchange="this.form.submit()" class="bg-gray-950 border border-gray-800 text-gray-200 text-xs font-semibold rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 w-full md:w-64 cursor-pointer">
-                <option value="">-- Todas las Categorías --</option>
-                @foreach($categorias as $cat)
-                    <option value="{{ $cat->id }}" {{ request('categoria_id') == $cat->id ? 'selected' : '' }}>
-                        {{ $cat->nombre }}
-                    </option>
-                @endforeach
-            </select>
-        </form>
+    <!-- Barra de Filtros -->
+    <div class="bg-[#111827] p-4 rounded-xl mb-6 border border-gray-800">
+        <form action="{{ url('/admin/zapatos') }}" method="GET" class="flex flex-wrap items-center justify-between gap-4">
+            
+            <div class="flex flex-wrap items-center gap-6">
+                <!-- Filtro de Categoría -->
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-bold text-gray-300">🔍 CATEGORÍA:</label>
+                    <select name="categoria" onchange="this.form.submit()" class="bg-[#1f2937] text-white border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                        <option value="">-- Todas las Categorías --</option>
+                        @foreach($categorias as $cat)
+                            <option value="{{ $cat->id }}" {{ request('categoria') == $cat->id ? 'selected' : '' }}>
+                                {{ $cat->nombre }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-        {{-- El botón se muestra ÚNICAMENTE si hay algún filtro aplicado en la URL --}}
-        @if(count(request()->except('page')) > 0)
-            <a href="{{ route('admin.zapatos.index') }}" class="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold px-4 py-2.5 rounded-xl transition-all flex items-center gap-2">
-                <span>🧹</span> Limpiar Filtro
-            </a>
-        @endif
+                <!-- Filtro de Estado Simplificado -->
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-bold text-gray-300">📌 ESTADO:</label>
+                    <select name="estado" onchange="this.form.submit()" class="bg-[#1f2937] text-white border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                        <option value="">-- Todos los Estados --</option>
+                        <option value="disponible" {{ request('estado') == 'disponible' ? 'selected' : '' }}>Disponible</option>
+                        <option value="deshabilitado" {{ request('estado') == 'deshabilitado' ? 'selected' : '' }}> Agotado</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Botón para Limpiar Filtros -->
+            @if(request('categoria') || request('estado'))
+                <a href="{{ url('/admin/zapatos') }}" class="bg-red-900/30 text-red-400 hover:bg-red-900/50 border border-red-800/50 rounded-lg px-4 py-2 text-sm font-semibold transition">
+                    🧹 Limpiar Filtros
+                </a>
+            @endif
+
+        </form>
     </div>
 
     <!-- Tabla de Productos -->
@@ -74,7 +91,7 @@
                             </td>
                             <td class="p-4">
                                 <span class="font-bold text-white block">{{ $zapato->nombre }}</span>
-                                <span class="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">{{ $zapato->genero ?? 'UNISEXO' }}</span>
+                                <span class="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">{{ $zapato->genero ?? 'UNISEX' }}</span>
                             </td>
                             <td class="p-4">
                                 <span class="bg-gray-800 text-gray-300 text-xs font-semibold px-3 py-1 rounded-lg border border-gray-700">
@@ -85,15 +102,17 @@
                                 ${{ number_format($zapato->precio, 0, ',', '.') }}
                             </td>
                             <td class="p-4 text-center">
-                                @if($zapato->activo ?? true)
-                                    <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-                                        Disponible
-                                    </span>
-                                @else
-                                    <span class="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-                                        Agotado
-                                    </span>
-                                @endif
+                               <td class="p-4 text-center">
+    @if($zapato->activo)
+        <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+            Disponible
+        </span>
+    @else
+        <span class="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+            Agotado
+        </span>
+    @endif
+</td>
                             </td>
                             <td class="p-4">
                                 <div class="flex items-center justify-center gap-2">
@@ -101,9 +120,8 @@
                                         ✏️ Editar
                                     </a>
 
-                                    {{-- Botón dinámico de estado (Activar / Deshabilitar) --}}
-                                    @if($zapato->activo ?? true)
-                                        <form action="{{ route('admin.zapatos.toggle', $zapato->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de deshabilitar este tenis y marcarlo como agotado?')" class="inline">
+                                    @if($zapato->activo)
+                                        <form action="{{ route('admin.zapatos.toggle', $zapato->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de deshabilitar este tenis?')" class="inline">
                                             @csrf
                                             @method('PATCH')
                                             <button type="submit" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 p-2 rounded-lg text-xs font-bold transition-all cursor-pointer">

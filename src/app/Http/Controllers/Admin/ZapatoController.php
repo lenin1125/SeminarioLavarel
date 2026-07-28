@@ -5,201 +5,225 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Producto;
-use App\Models\Categoria;
-use App\Models\Talla;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 
 class ZapatoController extends Controller
 {
+    /**
+     * Listar inventario de zapatos con filtros de Categoría y Estado
+     */
     public function index(Request $request)
     {
-        $query = Producto::with('categoria');
+        $query = Producto::with(['categoria', 'tallas']);
 
-        if ($request->filled('categoria_id')) {
-            $query->where('categoria_id', $request->categoria_id);
+        if ($request->filled('categoria')) {
+            $query->where('categoria_id', $request->categoria);
         }
 
-        $zapatos = $query->get();
-        $categorias = Categoria::all();
+        if ($request->filled('estado')) {
+            $estado = strtolower($request->estado);
+            
+            if ($estado === 'disponible' || $estado === '1') {
+                $query->where('activo', 1);
+            } elseif (in_array($estado, ['agotado', 'deshabilitado', '0'])) {
+                $query->where('activo', 0);
+            }
+        }
 
-        return view('zapatos.index', compact('zapatos', 'categorias'));
+        $zapatos = $query->orderBy('id', 'desc')
+                         ->paginate(10)
+                         ->appends($request->all());
+
+        $productos = $zapatos; // Alias de compatibilidad
+        $categorias = Schema::hasTable('categorias') ? DB::table('categorias')->get() : collect([]);
+
+        return view('zapatos.index', compact('zapatos', 'productos', 'categorias'));
     }
 
+    /**
+     * Formulario para crear un nuevo zapato
+     */
     public function create()
     {
-        $categorias = Categoria::all();
-        $tallas = Talla::all();
+        $categorias = Schema::hasTable('categorias') ? DB::table('categorias')->get() : collect([]);
+        $tallas     = Schema::hasTable('tallas') ? DB::table('tallas')->get() : collect([]);
+
         return view('zapatos.create', compact('categorias', 'tallas'));
     }
 
+    /**
+     * Guardar zapato en base de datos
+     */
     public function store(Request $request)
     {
-        $cloudName = 'x5lp98vz';
-        $uploadPreset = 'sneakerslh_preset';
-        
-        $filePrincipal = $request->file('imagen_principal') ?? $request->file('imagen');
-        
-        $imagenUrl = null;
-        if ($filePrincipal) {
-            $responsePrincipal = Http::attach('file', file_get_contents($filePrincipal->getRealPath()), $filePrincipal->getClientOriginalName())
-                ->post("https://api.cloudinary.com/v1_1/{$cloudName}/image/upload", ['upload_preset' => $uploadPreset]);
+        $request->validate([
+            'nombre' => 'required|string|max:255',
+            'precio' => 'required|numeric|min:0',
+            'imagen_principal' => 'nullable|image|max:5120',
+            'imagen'           => 'nullable|image|max:5120',
+        ]);
 
-            if ($responsePrincipal->failed()) {
-                return back()->with('error', 'Error al subir la imagen a Cloudinary.');
+        // Detecta si la imagen viene como 'imagen_principal' o 'imagen'
+        $fileKey = $request->hasFile('imagen_principal') ? 'imagen_principal' : ($request->hasFile('imagen') ? 'imagen' : null);
+        $imagenUrl = null;
+
+        if ($fileKey) {
+            try {
+                $file         = $request->file($fileKey);
+                $cloudName    = env('CLOUDINARY_CLOUD_NAME', 'x5lp98vz');
+                $uploadPreset = env('CLOUDINARY_UPLOAD_PRESET', 'sneakerslh_preset');
+
+                $response = Http::timeout(30)->withoutVerifying()
+                    ->attach('file', file_get_contents($file->getRealPath()), $file->getClientOriginalName())
+                    ->post("https://api.cloudinary.com/v1_1/{$cloudName}/image/upload", [
+                        'upload_preset' => $uploadPreset,
+                    ]);
+
+                if ($response->successful()) {
+                    $imagenUrl = $response->json()['secure_url'] ?? null;
+                }
+            } catch (\Exception $e) {
+                $imagenUrl = null;
             }
-            
-            $dataPrincipal = $responsePrincipal->json();
-            $imagenUrl = $dataPrincipal['secure_url'];
+
+            if (!$imagenUrl) {
+                $path = $request->file($fileKey)->store('productos', 'public');
+                $imagenUrl = asset('storage/' . $path);
+            }
         }
 
-        $producto = new Producto();
-        $producto->nombre       = $request->nombre;
-        $producto->descripcion  = $request->descripcion;
-        $producto->precio       = $request->precio;
-        $producto->genero       = $request->genero ?? 'UNISEX';
-        $producto->imagen_url   = $imagenUrl;
-        $producto->categoria_id = $request->categoria_id;
-        $producto->activo       = $request->has('activo') ? filter_var($request->activo, FILTER_VALIDATE_BOOLEAN) : true;
-        $producto->save();
+        // Datos principales del zapato
+        $dataInsert = [
+            'nombre'       => $request->nombre,
+            'descripcion'  => $request->descripcion ?? '',
+            'precio'       => $request->precio,
+            'categoria_id' => $request->categoria_id ?? null,
+            'imagen_url'   => $imagenUrl ?? 'https://placehold.co/400x400/1e293b/ffffff?text=Sin+Imagen',
+            'activo'       => 1,
+            'created_at'   => now(),
+            'updated_at'   => now()
+        ];
 
-        $tallasData = $request->input('stock_tallas') ?? $request->input('tallas');
+        // Añade genero si la columna existe en la tabla productos
+        if (Schema::hasColumn('productos', 'genero') && $request->has('genero')) {
+            $dataInsert['genero'] = $request->genero;
+        }
 
-        if (is_array($tallasData)) {
-            $columnasPivote = DB::getSchemaBuilder()->getColumnListing('producto_talla');
+        $productoId = DB::table('productos')->insertGetId($dataInsert);
+
+        // Guardar stock e inventario de tallas en la tabla pivote
+        if (Schema::hasTable('producto_talla')) {
+            $columnasPivote = Schema::getColumnListing('producto_talla');
             $columnaStock = in_array('stock', $columnasPivote) ? 'stock' : (in_array('cantidad', $columnasPivote) ? 'cantidad' : null);
 
-            foreach ($tallasData as $key => $cantidad) {
-                $cant = (int) $cantidad;
-                if ($cant > 0) {
-                    $tallaId = $this->obtenerOCrearTallaId($key);
-
-                    $dataPivote = ['producto_id' => $producto->id, 'talla_id' => $tallaId];
-                    if ($columnaStock) {
-                        $dataPivote[$columnaStock] = $cant;
+            // Si vienen cantidades por talla
+            if ($request->has('stock_tallas') && is_array($request->stock_tallas)) {
+                foreach ($request->stock_tallas as $tallaId => $cantidad) {
+                    $cant = (int) $cantidad;
+                    if ($cant > 0) {
+                        $pivote = ['producto_id' => $productoId, 'talla_id' => $tallaId];
+                        if ($columnaStock) {
+                            $pivote[$columnaStock] = $cant;
+                        }
+                        DB::table('producto_talla')->insert($pivote);
                     }
-
-                    DB::table('producto_talla')->insert($dataPivote);
+                }
+            } 
+            // Si viene selección por checkboxes de tallas
+            elseif ($request->has('tallas') && is_array($request->tallas)) {
+                foreach ($request->tallas as $tallaId) {
+                    $pivote = ['producto_id' => $productoId, 'talla_id' => $tallaId];
+                    if ($columnaStock) {
+                        $pivote[$columnaStock] = 10; // Stock por defecto
+                    }
+                    DB::table('producto_talla')->insert($pivote);
                 }
             }
         }
 
-        return redirect()->route('admin.zapatos.index')->with('success', 'Zapato guardado exitosamente.');
+        return redirect()->route('admin.zapatos.index')->with('success', 'Zapato registrado correctamente.');
     }
 
+    /**
+     * Vista para editar zapato
+     */
     public function edit($id)
     {
-        $producto = Producto::findOrFail($id);
-        $categorias = Categoria::all();
-        $tallas = Talla::all();
-        return view('zapatos.edit', compact('producto', 'categorias', 'tallas'));
+        $zapato     = Producto::with('tallas')->findOrFail($id);
+        $producto   = $zapato;
+        $categorias = Schema::hasTable('categorias') ? DB::table('categorias')->get() : collect([]);
+        $tallas     = Schema::hasTable('tallas') ? DB::table('tallas')->get() : collect([]);
+
+        return view('zapatos.edit', compact('zapato', 'producto', 'categorias', 'tallas'));
     }
 
+    /**
+     * Actualizar datos del zapato
+     */
     public function update(Request $request, $id)
     {
         $producto = Producto::findOrFail($id);
 
-        // Asignación directa
-        $producto->nombre       = $request->nombre;
-        $producto->descripcion  = $request->descripcion;
-        $producto->precio       = $request->precio;
-        $producto->genero       = $request->genero ?? 'UNISEX';
-        $producto->categoria_id = $request->categoria_id;
+        $data = [
+            'nombre'      => $request->input('nombre', $producto->nombre),
+            'precio'      => $request->input('precio', $producto->precio),
+            'descripcion' => $request->input('descripcion', $producto->descripcion),
+            'updated_at'  => now()
+        ];
 
-        // Forzar actualización de 'activo'
-        if ($request->has('activo')) {
-            $producto->activo = filter_var($request->activo, FILTER_VALIDATE_BOOLEAN);
+        if ($request->has('categoria_id')) {
+            $data['categoria_id'] = $request->categoria_id;
         }
 
-        // Subida de imagen opcional
-        $file = $request->file('imagen_principal') ?? $request->file('imagen');
-        if ($file) {
-            $cloudName = 'x5lp98vz';
-            $uploadPreset = 'sneakerslh_preset';
-
-            $response = Http::attach('file', file_get_contents($file->getRealPath()), $file->getClientOriginalName())
-                ->post("https://api.cloudinary.com/v1_1/{$cloudName}/image/upload", ['upload_preset' => $uploadPreset]);
-
-            if ($response->successful()) {
-                $producto->imagen_url = $response->json()['secure_url'];
-            }
+        if (Schema::hasColumn('productos', 'genero') && $request->has('genero')) {
+            $data['genero'] = $request->genero;
         }
 
-        // Guardar cambios en la base de datos
-        $producto->save();
+        $fileKey = $request->hasFile('imagen_principal') ? 'imagen_principal' : ($request->hasFile('imagen') ? 'imagen' : null);
 
-        // Actualizar inventario de tallas
-        $tallasData = $request->input('stock_tallas') ?? $request->input('tallas');
+        if ($fileKey) {
+            try {
+                $file         = $request->file($fileKey);
+                $cloudName    = env('CLOUDINARY_CLOUD_NAME', 'x5lp98vz');
+                $uploadPreset = env('CLOUDINARY_UPLOAD_PRESET', 'sneakerslh_preset');
 
-        if (is_array($tallasData)) {
-            $columnasPivote = DB::getSchemaBuilder()->getColumnListing('producto_talla');
-            $columnaStock = in_array('stock', $columnasPivote) ? 'stock' : (in_array('cantidad', $columnasPivote) ? 'cantidad' : null);
+                $response = Http::timeout(30)->withoutVerifying()
+                    ->attach('file', file_get_contents($file->getRealPath()), $file->getClientOriginalName())
+                    ->post("https://api.cloudinary.com/v1_1/{$cloudName}/image/upload", [
+                        'upload_preset' => $uploadPreset,
+                    ]);
 
-            DB::table('producto_talla')->where('producto_id', $producto->id)->delete();
-
-            foreach ($tallasData as $key => $cantidad) {
-                $cant = (int) $cantidad;
-                if ($cant > 0) {
-                    $tallaId = $this->obtenerOCrearTallaId($key);
-
-                    $dataPivote = [
-                        'producto_id' => $producto->id,
-                        'talla_id'    => $tallaId,
-                    ];
-
-                    if ($columnaStock) {
-                        $dataPivote[$columnaStock] = $cant;
-                    }
-
-                    DB::table('producto_talla')->insert($dataPivote);
+                if ($response->successful()) {
+                    $data['imagen_url'] = $response->json()['secure_url'];
                 }
-            }
+            } catch (\Exception $e) {}
         }
 
-        return redirect()->route('admin.zapatos.index')->with('success', "El producto '{$producto->nombre}' fue actualizado con éxito.");
+        DB::table('productos')->where('id', $id)->update($data);
+
+        return redirect()->route('admin.zapatos.index')->with('success', 'Zapato actualizado.');
     }
 
+    /**
+     * Eliminar zapato
+     */
     public function destroy($id)
     {
-        $producto = Producto::findOrFail($id);
-        $producto->activo = false;
-        $producto->save();
-
-        return redirect()->back()->with('success', 'El producto ha sido deshabilitado correctamente.');
+        DB::table('productos')->where('id', $id)->delete();
+        return redirect()->route('admin.zapatos.index')->with('success', 'Zapato eliminado.');
     }
 
+    /**
+     * Activar o desactivar estado del zapato
+     */
     public function toggleEstado($id)
     {
-        $producto = Producto::findOrFail($id); 
+        $producto = Producto::findOrFail($id);
         $producto->activo = !$producto->activo;
         $producto->save();
 
-        $estadoText = $producto->activo ? 'activado y disponible' : 'deshabilitado y marcado como agotado';
-
-        return redirect()->back()->with('success', "El producto '{$producto->nombre}' fue {$estadoText}.");
-    }
-
-    private function obtenerOCrearTallaId($key)
-    {
-        if (is_numeric($key) && Talla::where('id', $key)->exists()) {
-            return (int) $key;
-        }
-
-        $columnasTallas = DB::getSchemaBuilder()->getColumnListing('tallas');
-        
-        $columnaValida = null;
-        foreach (['numero', 'nombre', 'talla', 'size', 'descripcion'] as $posible) {
-            if (in_array($posible, $columnasTallas)) {
-                $columnaValida = $posible;
-                break;
-            }
-        }
-
-        if ($columnaValida) {
-            $talla = Talla::firstOrCreate([$columnaValida => (string) $key]);
-            return $talla->id;
-        }
-
-        return (int) $key;
+        return back()->with('success', 'Estado actualizado correctamente.');
     }
 }

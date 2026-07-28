@@ -71,14 +71,14 @@ Route::prefix('admin')->middleware(['auth', IsAdminMiddleware::class])->group(fu
     Route::get('/proveedores', [DashboardController::class, 'proveedoresIndex'])->name('admin.proveedores.index');
     Route::post('/proveedores', [DashboardController::class, 'proveedoresStore'])->name('admin.proveedores.store');
 
-    // Pagos y Pedidos
+    // Pagos y Pedidos (Ruta principal unificada y alias de compatibilidad)
     Route::get('/pagos', [PedidoController::class, 'pagosIndex'])->name('admin.pagos.index');
+    Route::get('/pedidos', [PedidoController::class, 'index'])->name('admin.pedidos.index');
+    Route::get('/pedidos-confirmados', [PedidoController::class, 'index'])->name('admin.pedidos.confirmados');
     Route::post('/pedidos/aprobar/{pedido_id}', [PedidoController::class, 'aprobar'])->name('admin.pedidos.aprobar');
     Route::delete('/pedidos/{id}/rechazar', [PedidoController::class, 'rechazar'])->name('admin.pedidos.rechazar');
-    Route::get('/pedidos-confirmados', [PedidoController::class, 'confirmadosIndex'])->name('admin.pedidos.confirmados');
 
     // Reportes y Usuarios
     Route::get('/reportes', [DashboardController::class, 'reportes'])->name('admin.reportes.index');
     Route::get('/usuarios', [DashboardController::class, 'usuariosIndex'])->name('admin.usuarios.index');
 });
-

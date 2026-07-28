@@ -14,15 +14,6 @@ use Illuminate\Support\Facades\Validator;
 class PedidoController extends Controller
 {
     /**
-     * Auxiliar para detectar la columna de stock en la tabla pivote ('stock' o 'cantidad')
-     */
-    private function getColumnaStock()
-    {
-        $columnasPivote = DB::getSchemaBuilder()->getColumnListing('producto_talla');
-        return in_array('stock', $columnasPivote) ? 'stock' : (in_array('cantidad', $columnasPivote) ? 'cantidad' : null);
-    }
-
-    /**
      * Mostrar los pedidos del usuario autenticado (si es cliente) 
      * o todos los pedidos (si es administrador)
      */
@@ -74,7 +65,6 @@ class PedidoController extends Controller
         try {
             $totalAcumulado = 0;
             $detallesParaCrear = [];
-            $columnaStock = $this->getColumnaStock();
 
             // 2. Validar disponibilidad, activo y calcular totales antes de guardar
             foreach ($request->productos as $item) {
@@ -95,13 +85,13 @@ class PedidoController extends Controller
                     ? Talla::find($tallaVal) ?? Talla::where('talla', (string)$tallaVal)->first()
                     : Talla::where('talla', (string)$tallaVal)->first();
 
-                if ($tallaModel && $columnaStock) {
+                if ($tallaModel) {
                     $registroPivote = DB::table('producto_talla')
                         ->where('producto_id', $producto->id)
                         ->where('talla_id', $tallaModel->id)
                         ->first();
 
-                    $stockDisponible = $registroPivote ? ($registroPivote->{$columnaStock} ?? 0) : 0;
+                    $stockDisponible = $registroPivote ? ($registroPivote->stock ?? 0) : 0;
 
                     if ($stockDisponible < $item['cantidad']) {
                         DB::rollBack();
@@ -115,7 +105,7 @@ class PedidoController extends Controller
                     DB::table('producto_talla')
                         ->where('producto_id', $producto->id)
                         ->where('talla_id', $tallaModel->id)
-                        ->decrement($columnaStock, $item['cantidad']);
+                        ->decrement('stock', $item['cantidad']);
                 }
 
                 $subtotal = $producto->precio * $item['cantidad'];

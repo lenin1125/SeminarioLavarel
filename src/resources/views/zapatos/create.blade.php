@@ -72,12 +72,12 @@
                       class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 font-medium transition">{{ old('descripcion') }}</textarea>
         </div>
 
-        <!-- SECCIÓN DE TALLAS CORREGIDA Y EXTRA FLEXIBLE -->
+        <!-- SECCIÓN DE TALLAS -->
         <div class="border-t border-gray-800 pt-5">
             <label class="block text-xs font-black uppercase tracking-widest text-indigo-400 mb-4">Disponibilidad de Tallas (EURO)</label>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Bloque de Tallas para Mujer (36 a 39) -->
+                <!-- Bloque para Damas -->
                 <div class="bg-gray-950/50 p-4 rounded-xl border border-gray-800/60">
                     <div class="flex items-center space-x-2 mb-3">
                         <span class="text-sm">👩</span>
@@ -86,12 +86,11 @@
                     <div class="grid grid-cols-4 gap-2">
                         @foreach($tallas as $talla)
                             @php
-                                // Filtra solo los números extrayendo cualquier carácter extraño
-                                $numeroLimpio = intval(preg_replace('/[^0-9]/', '', $talla->numero));
+                                $numeroLimpio = intval(preg_replace('/[^0-9]/', '', $talla->numero ?? $talla->nombre ?? ''));
                             @endphp
                             @if($numeroLimpio >= 36 && $numeroLimpio <= 39)
                                 <label class="flex items-center justify-between p-2.5 bg-gray-900 border border-gray-800 rounded-lg cursor-pointer hover:border-gray-700 select-none transition">
-                                    <span class="text-xs font-bold text-gray-300">EU {{ $talla->numero }}</span>
+                                    <span class="text-xs font-bold text-gray-300">EU {{ $talla->numero ?? $talla->nombre }}</span>
                                     <input type="checkbox" name="tallas[]" value="{{ $talla->id }}" class="w-4 h-4 rounded border-gray-700 bg-gray-950 text-indigo-600 focus:ring-0">
                                 </label>
                             @endif
@@ -99,7 +98,7 @@
                     </div>
                 </div>
 
-                <!-- Bloque de Tallas para Hombre (40 a 44) -->
+                <!-- Bloque para Caballeros -->
                 <div class="bg-gray-950/50 p-4 rounded-xl border border-gray-800/60">
                     <div class="flex items-center space-x-2 mb-3">
                         <span class="text-sm">👨</span>
@@ -108,12 +107,11 @@
                     <div class="grid grid-cols-5 gap-2">
                         @foreach($tallas as $talla)
                             @php
-                                // Filtra solo los números extrayendo cualquier carácter extraño
-                                $numeroLimpio = intval(preg_replace('/[^0-9]/', '', $talla->numero));
+                                $numeroLimpio = intval(preg_replace('/[^0-9]/', '', $talla->numero ?? $talla->nombre ?? ''));
                             @endphp
                             @if($numeroLimpio >= 40 && $numeroLimpio <= 44)
                                 <label class="flex items-center justify-between p-2.5 bg-gray-900 border border-gray-800 rounded-lg cursor-pointer hover:border-gray-700 select-none transition">
-                                    <span class="text-xs font-bold text-gray-300">EU {{ $talla->numero }}</span>
+                                    <span class="text-xs font-bold text-gray-300">EU {{ $talla->numero ?? $talla->nombre }}</span>
                                     <input type="checkbox" name="tallas[]" value="{{ $talla->id }}" class="w-4 h-4 rounded border-gray-700 bg-gray-950 text-indigo-600 focus:ring-0">
                                 </label>
                             @endif
@@ -123,28 +121,27 @@
             </div>
         </div>
 
-                    <!-- Sección de Stock por Tallas -->
-            <div class="bg-gray-900 p-6 rounded-2xl border border-gray-800 space-y-4">
-                <h3 class="text-white font-bold text-sm uppercase tracking-wider">Stock y Unidades por Talla</h3>
-                <p class="text-xs text-gray-400">Ingresa la cantidad disponible para cada talla. Si pones 0 o lo dejas vacío, no habrá stock.</p>
+        <!-- Sección de Stock y Unidades por Talla -->
+        <div class="bg-gray-900 p-6 rounded-2xl border border-gray-800 space-y-4">
+            <h3 class="text-white font-bold text-sm uppercase tracking-wider">Stock y Unidades por Talla</h3>
+            <p class="text-xs text-gray-400">Ingresa la cantidad disponible para cada talla. Si pones 0 o lo dejas vacío, no habrá stock.</p>
 
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                    @foreach($tallas as $talla)
-                        <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 text-center">
-                            <label class="block text-xs font-bold text-indigo-400 mb-2 uppercase">
-                                Talla {{ $talla->numero ?? $talla->nombre ?? $talla->talla }}
-                            </label>
-                            <!-- Usamos el ID de la talla como clave ($talla->id) -->
-                            <input type="number" 
-                                name="stock_tallas[{{ $talla->id }}]" 
-                                value="0" 
-                                min="0" 
-                                placeholder="0" 
-                                class="w-full bg-gray-900 border border-gray-800 text-white text-center font-bold rounded-lg py-2 text-sm focus:border-indigo-500 focus:outline-none">
-                        </div>
-                    @endforeach
-                </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                @foreach($tallas as $talla)
+                    <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 text-center">
+                        <label class="block text-xs font-bold text-indigo-400 mb-2 uppercase">
+                            Talla {{ $talla->numero ?? $talla->nombre ?? $talla->talla }}
+                        </label>
+                        <input type="number" 
+                            name="stock_tallas[{{ $talla->id }}]" 
+                            value="0" 
+                            min="0" 
+                            placeholder="0" 
+                            class="w-full bg-gray-900 border border-gray-800 text-white text-center font-bold rounded-lg py-2 text-sm focus:border-indigo-500 focus:outline-none">
+                    </div>
+                @endforeach
             </div>
+        </div>
 
         <!-- Imágenes de Portada y Galería -->
         <div class="border-t border-gray-800 pt-5 grid grid-cols-1 sm:grid-cols-2 gap-6">

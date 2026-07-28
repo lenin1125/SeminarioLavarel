@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProductoController;
-use App\Http\Controllers\Api\ZapatoController;
 use App\Http\Controllers\Api\PedidoController;
 use App\Http\Controllers\Api\PagoController;
 use Illuminate\Support\Facades\Route;
@@ -15,12 +14,12 @@ use Illuminate\Support\Facades\Route;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-// Catálogo de Productos y Zapatos
+// Catálogo de Productos y Zapatos (Ambos atendidos por ProductoController)
 Route::get('/productos', [ProductoController::class, 'index']);
 Route::get('/productos/{id}', [ProductoController::class, 'show']);
 
-Route::get('/zapatos', [ZapatoController::class, 'index']);
-Route::get('/zapatos/{id}', [ZapatoController::class, 'show']);
+Route::get('/zapatos', [ProductoController::class, 'index']);
+Route::get('/zapatos/{id}', [ProductoController::class, 'show']);
 
 /*
 |--------------------------------------------------------------------------
@@ -51,10 +50,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/productos/{id}', [ProductoController::class, 'update']);
         Route::delete('/productos/{id}', [ProductoController::class, 'destroy']);
 
-        // Gestión de Zapatos (Alias)
-        Route::post('/zapatos', [ZapatoController::class, 'store']);
-        Route::put('/zapatos/{id}', [ZapatoController::class, 'update']);
-        Route::delete('/zapatos/{id}', [ZapatoController::class, 'destroy']);
+        // Gestión de Zapatos (Alias apuntando a ProductoController)
+        Route::post('/zapatos', [ProductoController::class, 'store']);
+        Route::put('/zapatos/{id}', [ProductoController::class, 'update']);
+        Route::delete('/zapatos/{id}', [ProductoController::class, 'destroy']);
 
         // Validación de Pagos (Acepta PUT o POST)
         Route::put('/pagos/{id}/validar', [PagoController::class, 'validarPago']);

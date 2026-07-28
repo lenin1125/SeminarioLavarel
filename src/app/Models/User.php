@@ -5,11 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens; // 👈 1. Importado Sanctum
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable; // 👈 1. Habilitado Sanctum
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * Los atributos que son asignables de forma masiva.
@@ -22,6 +22,7 @@ class User extends Authenticatable
         'email',
         'password',
         'rol_id',
+        'is_admin',
     ];
 
     /**
@@ -48,10 +49,20 @@ class User extends Authenticatable
     }
 
     /**
-     * Relación con el Modelo Rol (Soluciona el error 500 en la API)
+     * Relación con el Modelo Rol
      */
-    public function rol() // 👈 2. Relación agregada
+    public function rol()
     {
         return $this->belongsTo(Rol::class, 'rol_id');
+    }
+
+    /**
+     * Encapsulación de lógica de negocio (Saber si es Admin)
+     */
+    public function isAdmin(): bool
+    {
+        return $this->email === 'admin@sneakerslh.com' 
+            || (bool) ($this->is_admin ?? false)
+            || ($this->rol_id === 1);
     }
 }
