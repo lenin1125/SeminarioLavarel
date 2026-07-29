@@ -94,7 +94,7 @@
             <div class="w-full md:flex-1">
                 <div class="flex justify-between items-center mb-2">
                     <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        PRECIO MÁXIMO
+                        RANGO DE PRECIO
                     </label>
                     <span id="precioFormateado" class="text-sm font-extrabold text-emerald-400">
                         $ {{ number_format(request('precio_max', $precioMaximoCatalogo ?? 500000), 0, ',', '.') }}
