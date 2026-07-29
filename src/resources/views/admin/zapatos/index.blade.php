@@ -35,7 +35,7 @@
                     <select name="categoria" onchange="this.form.submit()" class="bg-[#1f2937] text-white border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
                         <option value="">-- Todas las Categorías --</option>
                         @foreach($categorias as $cat)
-                            <option value="{{ $cat->id }}" {{ request('categoria') == $cat->id ? 'selected' : '' }}>
+                            <option value="{{ $cat->id }}" {{ (request('categoria') == $cat->id || request('categoria') == $cat->nombre) ? 'selected' : '' }}>
                                 {{ $cat->nombre }}
                             </option>
                         @endforeach
@@ -48,7 +48,7 @@
                     <select name="estado" onchange="this.form.submit()" class="bg-[#1f2937] text-white border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
                         <option value="">-- Todos los Estados --</option>
                         <option value="disponible" {{ request('estado') == 'disponible' ? 'selected' : '' }}>Disponible</option>
-                        <option value="deshabilitado" {{ request('estado') == 'deshabilitado' ? 'selected' : '' }}> Agotado</option>
+                        <option value="deshabilitado" {{ request('estado') == 'deshabilitado' ? 'selected' : '' }}>Agotado</option>
                     </select>
                 </div>
             </div>
@@ -102,17 +102,15 @@
                                 ${{ number_format($zapato->precio, 0, ',', '.') }}
                             </td>
                             <td class="p-4 text-center">
-                               <td class="p-4 text-center">
-    @if($zapato->activo)
-        <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-            Disponible
-        </span>
-    @else
-        <span class="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-            Agotado
-        </span>
-    @endif
-</td>
+                                @if($zapato->activo)
+                                    <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                                        Disponible
+                                    </span>
+                                @else
+                                    <span class="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                                        Agotado
+                                    </span>
+                                @endif
                             </td>
                             <td class="p-4">
                                 <div class="flex items-center justify-center gap-2">
@@ -152,6 +150,13 @@
             </table>
         </div>
     </div>
+
+    <!-- Paginación -->
+    @if($zapatos->hasPages())
+        <div class="mt-6 flex justify-center">
+            {{ $zapatos->appends(request()->query())->links() }}
+        </div>
+    @endif
 
 </div>
 @endsection

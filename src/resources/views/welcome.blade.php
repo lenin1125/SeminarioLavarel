@@ -104,7 +104,7 @@
                 <input type="range" 
                        name="precio_max" 
                        id="sliderPrecio"
-                       min="0" 
+                       min="{{ $precioMinimoCatalogo ?? 0 }}" 
                        max="{{ $precioMaximoCatalogo ?? 500000 }}" 
                        step="10000"
                        value="{{ request('precio_max', $precioMaximoCatalogo ?? 500000) }}"
@@ -113,7 +113,7 @@
                        class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-emerald-500 my-3">
 
                 <div class="flex justify-between text-[10px] text-gray-500 font-bold">
-                    <span>$ 0</span>
+                    <span>$ {{ number_format($precioMinimoCatalogo ?? 0, 0, ',', '.') }}</span>
                     <span>$ {{ number_format($precioMaximoCatalogo ?? 500000, 0, ',', '.') }}</span>
                 </div>
             </div>
@@ -193,6 +193,13 @@
                 </div>
             @endforelse
         </div>
+
+        <!-- BOTONES DE PAGINACIÓN -->
+        @if($productos->hasPages())
+            <div class="mt-12 flex justify-center">
+                {{ $productos->links() }}
+            </div>
+        @endif
     </main>
 
     <!-- PIE DE PÁGINA -->

@@ -10,17 +10,18 @@ class DashboardController extends Controller
 {
     public function reportes()
     {
-        // 1. Métricas superiores para las tarjetas
-        $ventasDiarias = DB::table('ventas')
+        // 1. Ventas acumuladas de HOY en la tabla pedidos
+        $ventasDiarias = DB::table('pedidos')
             ->whereDate('created_at', now())
-            ->sum('monto_total');
+            ->sum('total');
 
-        $ventasMensuales = DB::table('ventas')
+        // 2. Ventas acumuladas de ESTE MES en la tabla pedidos
+        $ventasMensuales = DB::table('pedidos')
             ->whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
-            ->sum('monto_total');
+            ->sum('total');
 
-        // 2. Producto más vendido (se asigna el alias 'total_vendido' que exige la vista)
+        // 3. Producto más vendido (Desde detalle_pedido)
         $productoMasVendido = DB::table('detalle_pedido')
             ->join('productos', 'detalle_pedido.producto_id', '=', 'productos.id')
             ->select('productos.nombre', DB::raw('SUM(detalle_pedido.cantidad) as total_vendido'))
@@ -28,11 +29,11 @@ class DashboardController extends Controller
             ->orderByDesc('total_vendido')
             ->first();
 
-        // 3. Gráfico 1: Historial de Ventas (Compatible con MySQL Strict Mode)
-        $ventasPorMes = DB::table('ventas')
+        // 4. Historial de Ventas por Mes (Para el gráfico)
+        $ventasPorMes = DB::table('pedidos')
             ->select(
                 DB::raw("DATE_FORMAT(created_at, '%b %Y') as mes_nombre"),
-                DB::raw("SUM(monto_total) as total"),
+                DB::raw("SUM(total) as total"),
                 DB::raw("MIN(created_at) as min_fecha")
             )
             ->groupBy(DB::raw("DATE_FORMAT(created_at, '%b %Y')"))
@@ -40,7 +41,7 @@ class DashboardController extends Controller
             ->limit(6)
             ->get();
 
-        // 4. Gráfico 2: Top 5 Productos más vendidos (Para el gráfico de Dona)
+        // 5. Top 5 Productos más vendidos
         $topProductos = DB::table('detalle_pedido')
             ->join('productos', 'detalle_pedido.producto_id', '=', 'productos.id')
             ->select('productos.nombre', DB::raw('SUM(detalle_pedido.cantidad) as total_unidades'))
@@ -62,7 +63,7 @@ class DashboardController extends Controller
     {
         return $this->reportes();
     }
-    
+
     public function usuariosIndex()
     {
         $usuarios = DB::table('users')

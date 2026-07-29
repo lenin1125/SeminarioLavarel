@@ -33,13 +33,13 @@ class ZapatoController extends Controller
         }
 
         $zapatos = $query->orderBy('id', 'desc')
-                         ->paginate(10)
+                         ->paginate(15)
                          ->appends($request->all());
 
         $productos = $zapatos; // Alias de compatibilidad
         $categorias = Schema::hasTable('categorias') ? DB::table('categorias')->get() : collect([]);
 
-        return view('zapatos.index', compact('zapatos', 'productos', 'categorias'));
+        return view('admin.zapatos.index', compact('zapatos', 'productos', 'categorias'));
     }
 
     /**
@@ -50,7 +50,7 @@ class ZapatoController extends Controller
         $categorias = Schema::hasTable('categorias') ? DB::table('categorias')->get() : collect([]);
         $tallas     = Schema::hasTable('tallas') ? DB::table('tallas')->get() : collect([]);
 
-        return view('zapatos.create', compact('categorias', 'tallas'));
+        return view('admin.zapatos.create', compact('categorias', 'tallas'));
     }
 
     /**
@@ -156,11 +156,11 @@ class ZapatoController extends Controller
         $categorias = Schema::hasTable('categorias') ? DB::table('categorias')->get() : collect([]);
         $tallas     = Schema::hasTable('tallas') ? DB::table('tallas')->get() : collect([]);
 
-        return view('zapatos.edit', compact('zapato', 'producto', 'categorias', 'tallas'));
+        return view('admin.zapatos.edit', compact('zapato', 'producto', 'categorias', 'tallas'));
     }
 
     /**
-     * Actualizar datos del zapato
+     * Actualizar datos del zapato y sincronizar sus tallas
      */
     public function update(Request $request, $id)
     {
@@ -201,9 +201,62 @@ class ZapatoController extends Controller
             } catch (\Exception $e) {}
         }
 
+        $totalStock = 0;
+
+        // Actualizar tabla pivote de tallas
+        if (Schema::hasTable('producto_talla')) {
+            $columnasPivote = Schema::getColumnListing('producto_talla');
+            $columnaStock = in_array('stock', $columnasPivote) ? 'stock' : (in_array('cantidad', $columnasPivote) ? 'cantidad' : null);
+
+            // Eliminar tallas previas e insertar el nuevo inventario
+            if ($request->has('stock_tallas') || $request->has('tallas')) {
+                DB::table('producto_talla')->where('producto_id', $id)->delete();
+
+                if ($request->has('stock_tallas') && is_array($request->stock_tallas)) {
+                    foreach ($request->stock_tallas as $tallaId => $cantidad) {
+                        $cant = (int) $cantidad;
+                        if ($cant > 0) {
+                            $totalStock += $cant;
+                            $pivote = ['producto_id' => $id, 'talla_id' => $tallaId];
+                            if ($columnaStock) {
+                                $pivote[$columnaStock] = $cant;
+                            }
+                            DB::table('producto_talla')->insert($pivote);
+                        }
+                    }
+                } elseif ($request->has('tallas') && is_array($request->tallas)) {
+                    foreach ($request->tallas as $tallaId) {
+                        $totalStock += 10;
+                        $pivote = ['producto_id' => $id, 'talla_id' => $tallaId];
+                        if ($columnaStock) {
+                            $pivote[$columnaStock] = 10; // Stock por defecto
+                        }
+                        DB::table('producto_talla')->insert($pivote);
+                    }
+                }
+            } else {
+                // Si no se enviaron tallas en el request, consultar el stock actual en DB
+                if ($columnaStock) {
+                    $totalStock = (int) DB::table('producto_talla')->where('producto_id', $id)->sum($columnaStock);
+                }
+            }
+        }
+
+        // Evaluar Visibilidad / Estado (activo):
+        // Si hay stock disponible (> 0), reactivamos automáticamente el producto a activo = 1
+        if ($totalStock > 0) {
+            $data['activo'] = 1;
+        } elseif ($request->has('activo')) {
+            $data['activo'] = (int) $request->activo;
+        } elseif ($request->has('visibilidad')) {
+            $data['activo'] = in_array(strtolower($request->visibilidad), ['1', 'disponible', 'activo', 'habilitado']) ? 1 : 0;
+        } else {
+            $data['activo'] = 0;
+        }
+
         DB::table('productos')->where('id', $id)->update($data);
 
-        return redirect()->route('admin.zapatos.index')->with('success', 'Zapato actualizado.');
+        return redirect()->route('admin.zapatos.index')->with('success', 'Zapato actualizado correctamente.');
     }
 
     /**
@@ -211,7 +264,11 @@ class ZapatoController extends Controller
      */
     public function destroy($id)
     {
+        if (Schema::hasTable('producto_talla')) {
+            DB::table('producto_talla')->where('producto_id', $id)->delete();
+        }
         DB::table('productos')->where('id', $id)->delete();
+
         return redirect()->route('admin.zapatos.index')->with('success', 'Zapato eliminado.');
     }
 

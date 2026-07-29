@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-// IMPORTANTE: Aquí traemos los modelos y fachadas que usas en este código
 use App\Models\Producto;
 use App\Models\Categoria;
 use Illuminate\Support\Facades\DB;
@@ -20,17 +19,24 @@ class TiendaController extends Controller
             $query->where('categoria_id', $request->estilo);
         }
 
+        // Obtener Precio Mínimo y Precio Máximo real de todo el inventario
+        $precioMinimoCatalogo = Producto::min('precio') ?? 0;
+        $precioMaximoCatalogo = Producto::max('precio') ?? 500000;
+
         if ($request->filled('precio_max')) {
             $query->where('precio', '<=', (float) $request->precio_max);
         }
 
-        $productos = $query->orderBy('id', 'desc')->get();
+        // Paginación de 15 productos por página conservando los filtros en la URL
+        $productos = $query->orderBy('id', 'desc')
+                           ->paginate(15)
+                           ->appends($request->all());
+
         $zapatos = $productos; 
 
         $categorias = Categoria::all();
-        $precioMaximoCatalogo = Producto::max('precio') ?? 1000000;
 
-        return view('welcome', compact('productos', 'zapatos', 'categorias', 'precioMaximoCatalogo'));
+        return view('welcome', compact('productos', 'zapatos', 'categorias', 'precioMinimoCatalogo', 'precioMaximoCatalogo'));
     }
 
     // Ver Detalle del Zapato
@@ -38,10 +44,10 @@ class TiendaController extends Controller
     {
         $producto = Producto::with(['categoria', 'tallas'])->findOrFail($id);
 
-        return view('zapatos.show', compact('producto'));
+        return view('admin.zapatos.show', compact('producto'));
     }
 
-    // Guardado Genérico por Tallas (Aunque esto debería ir al admin, lo dejamos aquí por ahora para no romperte nada)
+    // Guardado Genérico por Tallas
     public function store(Request $request)
     {
         $request->validate([

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\PedidoService;
+use App\Models\Pedido;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PedidoController extends Controller
 {
@@ -63,5 +65,37 @@ class PedidoController extends Controller
         $resultado = $this->pedidoService->rechazarPedido((int) $id);
 
         return redirect()->back()->with($resultado['status'], $resultado['message']);
+    }
+
+    /**
+     * Generar y descargar reporte en PDF de pedidos por rango de fechas
+     */
+    public function exportarPdf(Request $request)
+    {
+        $request->validate([
+            'fecha_inicio' => 'required|date',
+            'fecha_fin'    => 'required|date|after_or_equal:fecha_inicio',
+        ]);
+
+        $fechaInicio = $request->fecha_inicio;
+        $fechaFin    = $request->fecha_fin;
+
+        // Consultar compras realizadas dentro del rango de fechas
+        $pedidos = Pedido::with(['usuario', 'detalles.producto', 'pago'])
+            ->whereBetween('created_at', [
+                $fechaInicio . ' 00:00:00',
+                $fechaFin . ' 23:59:59'
+            ])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $pdf = Pdf::loadView('admin.pedidos.pdf_reporte', compact('pedidos', 'fechaInicio', 'fechaFin'))
+            ->setPaper('a4', 'portrait')
+            ->setOption([
+                'isRemoteEnabled'      => true,
+                'isHtml5ParserEnabled' => true
+            ]);
+
+        return $pdf->download("reporte_pedidos_{$fechaInicio}_a_{$fechaFin}.pdf");
     }
 }

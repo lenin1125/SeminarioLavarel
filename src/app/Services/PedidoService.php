@@ -230,12 +230,18 @@ class PedidoService
                     }
                 }
 
+                // 1. Sumar stock a la talla
                 if ($tallaId) {
                     DB::table('producto_talla')
                         ->where('producto_id', $productoId)
                         ->where('talla_id', $tallaId)
                         ->increment('stock', $cantidad);
                 }
+
+                // 2. CORRECCIÓN CLAVE: Reactivar el producto para que pase de 'Agotado' a 'Disponible'
+                DB::table('productos')
+                    ->where('id', $productoId)
+                    ->update(['activo' => 1]);
             }
 
             DB::table('pedidos')->where('id', $pedidoId)->update([
@@ -246,6 +252,6 @@ class PedidoService
             DB::table('ventas')->where('pedido_id', $pedidoId)->delete();
         });
 
-        return ['status' => 'success', 'message' => 'El pedido fue rechazado y el stock fue devuelto correctamente.'];
+        return ['status' => 'success', 'message' => 'El pedido fue rechazado, el stock fue devuelto y el producto volvió a estar disponible.'];
     }
 }
